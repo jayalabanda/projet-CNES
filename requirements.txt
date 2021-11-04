@@ -1,0 +1,22 @@
+# base scientific libraries
+numpy
+
+# plotting libraries
+matplotlib
+seaborn
+
+# geospatial libraries
+rasterio==1.2.10
+sentinelsat==1.1.0
+sentinelhub==3.3.2
+utm==0.7.0
+geopandas==0.10.1
+geojson==2.5.0
+fiona==1.8.20
+
+# image processing libraries
+opencv
+pillow
+
+# others
+rtree==0.9.3, != 0.9.7 # you get an error otherwise
