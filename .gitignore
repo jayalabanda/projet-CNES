@@ -5,7 +5,9 @@
 
 # folders
 *.SAFE/
-*.ipynb_checkpoints/
+.ipynb_checkpoints/
+.vscode/
+__pycache__/
 
-# credentials file
+# credentials folder
 secrets/

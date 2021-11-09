@@ -13,6 +13,7 @@ import pandas as pd
 from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 import utm
 
+
 def get_band(image_folder, band, resolution=10):
     """Returns an image opened with rasterio with the given band and resolution    
 
@@ -24,15 +25,18 @@ def get_band(image_folder, band, resolution=10):
     Returns:
         img: image with the given band and resolution
     """
-    subfolder = [f for f in os.listdir(image_folder + "/GRANULE") if f[0]  == "L"][0]
-    image_folder_path  = f"{image_folder}/GRANULE/{subfolder}/IMG_DATA/R{resolution}m"
-    image_files = [im for im in os.listdir(image_folder_path) if im[-4:] == ".jp2"]
+    subfolder = [f for f in os.listdir(
+        image_folder + "/GRANULE") if f[0] == "L"][0]
+    image_folder_path = f"{image_folder}/GRANULE/{subfolder}/IMG_DATA/R{resolution}m"
+    image_files = [im for im in os.listdir(
+        image_folder_path) if im[-4:] == ".jp2"]
     selected_file = [im for im in image_files if im.split("_")[2] == band][0]
-    
+
     with rasterio.open(f"{image_folder_path}/{selected_file}", driver='JP2OpenJPEG') as infile:
         img = infile.read(1)
-    
+
     return img
+
 
 def threshold_filter(image, threshold):
     """Puts all values below threshold to 0.
@@ -47,6 +51,7 @@ def threshold_filter(image, threshold):
     image[image < threshold] = 0
     return image
 
+
 def calculate_area(image):
     """Calculates the area of the image.
 
@@ -57,12 +62,13 @@ def calculate_area(image):
         area: area of the image
     """
     count = np.count_nonzero(image)
-    n,m = image.shape
-    ratio = count / (n * m)
+    # ndarray.size = n * m
+    ratio = count / image.size
     # multiply ratio by the actual area of the image using coordinates
-    # remove the line below once the area using coordinates is calculated has been implemented. 
+    # remove the line below once the area using coordinates is calculated has been implemented.
     area = ratio
     return area
+
 
 def merge_four_images(image_array):
     """
@@ -82,9 +88,9 @@ def merge_four_images(image_array):
     # get the shapes of the initial images to make an image that is twice as big
     n = image1.shape[0]
     m = image1.shape[1]
-    final_image = np.zeros((2*n, 2*m, 3), np.uint8)
-    final_image[0:n, 0:m, :] = image1
-    final_image[n+1:, 0:m, :] = image2
-    final_image[0:n, m+1:, :] = image3
-    final_image[n+1:, m+1:, :] = image4
+    final_image = np.zeros((2 * n, 2 * m), np.uint8)
+    final_image[:n, :m] = image1
+    final_image[n:, :m] = image2
+    final_image[:n, m:] = image3
+    final_image[n:, m:] = image4
     return final_image
