@@ -1,6 +1,11 @@
+# image files
 *.tiff
 *.jp2
+*.png
+
+# folders
 *.SAFE/
-*.png/
 *.ipynb_checkpoints/
+
+# credentials file
 secrets/
