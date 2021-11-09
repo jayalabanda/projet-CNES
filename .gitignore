@@ -1,5 +1,6 @@
 *.tiff
 *.jp2
 *.SAFE/
+*.png/
 *.ipynb_checkpoints/
 secrets/
