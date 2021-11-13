@@ -14,11 +14,13 @@ import pandas as pd
 from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 import utm
 
+
 def get_band(image_folder, band, resolution=10):
     """Returns an image opened with rasterio with the given band and resolution    
 
     Args:
         image_folder (path): path to the folder containing the image
+        band (string): band to be extracted. Can be 'B01', 'B02', for example
         resolution (int): Resolution of the image. Defaults to 10.
 
     Returns:
@@ -31,23 +33,24 @@ def get_band(image_folder, band, resolution=10):
         image_folder_path) if im[-4:] == ".jp2"]
     # retrieve jp2 image file
     selected_file = [im for im in image_files if im.split("_")[2] == band][0]
-    # print(selected_file)
-    path = os.path.join(image_folder_path,selected_file)
-    return path
+    return os.path.join(image_folder_path, selected_file)
 
-def download_from_api(df, api, index):
-    """Downloads images from the API and saves them to the disk as a zip file.
 
-    Args:
-        df (dataframe): dataframe containing the images to download
-        api (SentinelAPI): API object
-        index (int): index of the image to download
-    """
-    uuid = df["uuid"].values[index]
-    api.download(uuid)
+# def download_from_api(df, api, index):
+#     """Downloads images from the API and saves them to the disk as a zip file.
+
+#     Args:
+#         df (dataframe): dataframe containing the images to download
+#         api (SentinelAPI): API object
+#         index (int): index of the image to download
+#     """
+#     uuid = df["uuid"].values[index]
+#     api.download(uuid)
+
 
 def open_rasterio(image_path):
     """Opens the image with rasterio.
+
     Args:
         image_path (string): path to the image
     Returns:
@@ -57,47 +60,100 @@ def open_rasterio(image_path):
         img = infile.read(1)
     return img
 
+
+def create_tiff_image(api, uuid, title, path, name):
+    """Create the tiff image from the uuid.
+
+    Args:
+        api (SentinelAPI): API object
+        uuid (string): uuid of the image
+        title (string): named column in the images dataframe
+        path (string): path to save the tiff file
+        name (string): name of the tiff file
+    Returns:
+        image: image with the given uuid
+    """
+    dirs = os.listdir(path)
+    dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
+
+    if title not in dirs_safe:
+        api.download(uuid, path)
+        # unzip the file with zipfile
+        with zipfile.ZipFile(path, 'r') as zip_ref:
+            zip_ref.extractall(path)
+
+    image_path_b04 = get_band(path, "B04", resolution=10)
+    image_path_b08 = get_band(path, "B08", resolution=10)
+
+    band4 = open_rasterio(image_path_b04)
+    band8 = open_rasterio(image_path_b08)
+
+    red = band4.astype('float64')
+    nir = band8.astype('float64')
+
+    ndvi = np.where(
+        (nir + red) == 0.,
+        0.,
+        (nir - red) / (nir + red)
+    )
+
+    ndvi_img = rasterio.open(
+        f'./output/{name}.tiff' 'w', driver='GTiff',
+        width=band4.width,
+        height=band4.height,
+        count=1,
+        crs=band4.crs,
+        transform=band4.transform,
+        dtype='float64'
+    )
+    ndvi_img.write(ndvi, 1)
+    ndvi_img.close()
+
+    return rasterio.open(f'./output/{name}.tiff')
+
+
 def threshold_filter(image, threshold):
     """Puts all values below threshold to 0.
 
     Args:
         image : Already imported image
         threshold (float): Threshold value
-
     Returns:
         image: image where all values below threshold are set to 0
     """
     image[image < threshold] = 0
     return image
 
-def calculate_area(image):
-    """Calculates the area of the image.
+
+def calculate_area(sub_image, original_image, resolution=10):
+    """Calculates the surface of the burnt area.
 
     Args:
-        image : Already imported image
-
+        sub_image: already imported image after thresholding
+        original_image: tiff image obtained from the API
+        resolution (int): resolution of the image. Defaults to 10
+            (10m = 10, 20m = 20, 60m = 60)
     Returns:
-        area: area of the image
+        area: area of the image in squared kilometers
     """
-    count = np.count_nonzero(image)
-    # ndarray.size = n * m
-    ratio = count / image.size
-    # multiply ratio by the actual area of the image using coordinates
-    # remove the line below once the area using coordinates is calculated has been implemented.
-    area = ratio
-    return area
+    count = np.count_nonzero(sub_image)
+    original_area = original_image.size * resolution**2 / 1_000_000  # km^2
+    sub_image_area = sub_image.size / original_image.size * original_area
+    return count / sub_image.size * sub_image_area
+
 
 def merge_four_images(image_array):
     """
     Takes 4 images of SAME SIZE, merges them together to get a lager field of view
     along with a bigger final picture.
+
     Args:
         image_array (list): list of the 4 images that need to be merged.
-        First image: upper left, second image: upper right.
-        Third image: lower left, fourth image: lower right. 
+            First image: upper left, second image: upper right.
+            Third image: lower left, fourth image: lower right. 
     Returns:
         final_mage: one final image that has all 4 images merged together
-    """,
+    """
     image1 = image_array[0]
     image2 = image_array[1]
     image3 = image_array[2]
@@ -112,29 +168,37 @@ def merge_four_images(image_array):
     final_image[n:, m:] = image4
     return final_image
 
-def select_image_cloud(images_df,cloud_threshold):
+
+def select_image_cloud(images_df, cloud_threshold=0.4):
     """Select images with cloud cover less than cloud_threshold.
        Return the one with the lowest cloud coverage. 
-    
-    Arguments:
-        images_df {dataframe} -- dataframe containing images
-        cloud_threshold {float} -- threshold for cloud coverage
-    
+
+    Args:
+        images_df (dataframe): dataframe containing images
+        cloud_threshold (float): threshold for cloud coverage. Defaults to 0.4
+
     Returns:
-        uuid {string} -- uuid of the selected image.
+        uuid (string): uuid of the selected image.
     """
     images_df = images_df[images_df.cloudcoverpercentage < cloud_threshold]
-    best_image = images_df[images_df.cloudcoverpercentage == images_df.cloudcoverpercentage.min()]
+    best_image = images_df[images_df.cloudcoverpercentage ==
+                           images_df.cloudcoverpercentage.min()]
     uuid = best_image.iloc[0]["uuid"]
     title = best_image.iloc[0]["title"]
     return uuid, title
 
-def get_best_image_bewteen_dates(date1, date2):
+
+def get_best_image_bewteen_dates(api, date1, date2, geojson_path, cloud_threshold=0.4):
     """Return the image with the lowest cloud cover percentage between two dates.
 
     Args:
+        api (SentinelAPI): API object
         date1 (datetime): date of the first observation
         date2 (datetime): date of the second observation
+        geojson_path (string): path to the geojson file
+        cloud_threshold (float): threshold for cloud coverage. Defaults to 0.4
+    Returns:
+        uuid and title of the image
     """
     shape = geojson_to_wkt(read_geojson(geojson_path))
     images = api.query(
@@ -142,77 +206,55 @@ def get_best_image_bewteen_dates(date1, date2):
         date=(date1, date2),
         platformname="Sentinel-2",
         processinglevel="Level-2A",
-        cloudcoverpercentage=(0, 30)
+        cloudcoverpercentage=(0, cloud_threshold)
     )
-    return select_image_cloud(images, 0.4)
+    return select_image_cloud(images, cloud_threshold)
 
-def get_before_after_images(wildfire_date, observation_interval):
+
+def get_before_after_images(api, wildfire_date, observation_interval,
+                            geojson_path, cloud_threshold=0.4):
     """Returns the images before and after the wildfire date.
        It is filtered with a fixed cloud cover percentage at 40%.
+
     Args:
+        api (SentinelAPI): API object
         wildfire_date (date): date of the wildfire
         observation_interval (int): interval between observations
-    
+        geojson_path (string): path to the geojson file
+        cloud_threshold (float): threshold for cloud coverage. Defaults to 0.4
     Returns:
         before_image: image before the wildfire
         after_image: image after the wildfire
     """
     before_date = wildfire_date - timedelta(days=1)
-    before_date_one_week_ago = wildfire_date - timedelta(days = observation_interval)
-    before_image_uuid, title1 = get_best_image_bewteen_dates(before_date_one_week_ago, before_date)
-    last_observation_date = wildfire_date + timedelta(days = observation_interval)
-    after_image_uuid, title2 = get_best_image_bewteen_dates(wildfire_date, last_observation_date)    
+    before_date_one_week_ago = wildfire_date - \
+        timedelta(days=observation_interval)
+
+    before_image_uuid, title1 = get_best_image_bewteen_dates(
+        api, before_date_one_week_ago, before_date,
+        geojson_path, cloud_threshold
+    )
+
+    last_observation_date = wildfire_date + \
+        timedelta(days=observation_interval)
+
+    after_image_uuid, title2 = get_best_image_bewteen_dates(
+        api, wildfire_date, last_observation_date,
+        geojson_path, cloud_threshold
+    )
+
     before_image = create_tiff_image(
-        uuid = before_image_uuid,
-        title = title1,
-        path = "./data",
-        name = "ndvi_before")
+        api=api,
+        uuid=before_image_uuid,
+        title=title1,
+        path="./data",
+        name="ndvi_before"
+    )
     after_image = create_tiff_image(
-        uuid = after_image_uuid,
-        title = title2,
-        path = "./data",
-        name = "ndvi_after"
+        api=api,
+        uuid=after_image_uuid,
+        title=title2,
+        path="./data",
+        name="ndvi_after"
     )
     return before_image, after_image
-
-def create_tiff_image(uuid,title, path, name):
-    """Create the tiff image from the uuid.
-    Args:
-        uuid (string): uuid of the image
-        temporary_folder (string): path to the folder where the data will be temporarily stored.
-        name (string): name of tiff file
-    Returns:
-        image: image with the given uuid
-    """
-    path = "./data/"
-    dirs = os.listdir(path)
-    dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
-    if not title in dirs_safe:
-        api.download(uuid, path)
-    #unzip the file with zipfile
-        with zipfile.ZipFile(path, 'r') as zip_ref:
-            zip_ref.extractall(path)
-    image_path_b04 = get_band(path,"B04",resolution=10)
-    image_path_b08 = get_band(path,"B08",resolution=10)
-    band4 = open_rasterio(image_path_b04)
-    band8 = open_rasterio(image_path_b08)
-    red = band4.astype('float64')
-    nir = band8.astype('float64')
-    ndvi = np.where(
-        (nir + red) == 0.,
-        0.,
-        (nir - red) / (nir + red)
-    )
-    ndvi_img = rasterio.open(
-        f'./output/{name}.tiff, 'w', driver='GTiff',
-        width=band4.width,
-        height=band4.height, 
-        count=1,
-        crs=band4.crs,
-        transform=band4.transform,
-        dtype='float64'
-    )
-    ndvi_img.write(ndvi, 1)
-    ndvi_img.close()
-    
-    return rasterio.open(f'./output/{name}.tiff')
