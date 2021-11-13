@@ -3,6 +3,7 @@ import cv2
 from datetime import date, datetime, timedelta
 import json
 import itertools
+import zipfile
 
 import rasterio
 from rasterio import plot
@@ -29,11 +30,32 @@ def get_band(image_folder, band, resolution=10):
     image_folder_path = f"{image_folder}/GRANULE/{subfolder}/IMG_DATA/R{resolution}m"
     image_files = [im for im in os.listdir(
         image_folder_path) if im[-4:] == ".jp2"]
+    # retrieve jp2 image file
     selected_file = [im for im in image_files if im.split("_")[2] == band][0]
+    # print(selected_file)
+    path = os.path.join(image_folder_path,selected_file)
+    return path
 
-    with rasterio.open(f"{image_folder_path}/{selected_file}", driver='JP2OpenJPEG') as infile:
+def download_from_api(df, api, index):
+    """Downloads images from the API and saves them to the disk as a zip file.
+
+    Args:
+        df (dataframe): dataframe containing the images to download
+        api (SentinelAPI): API object
+        index (int): index of the image to download
+    """
+    uuid = df["uuid"].values[index]
+    api.download(uuid)
+
+def open_rasterio(image_path):
+    """Opens the image with rasterio.
+    Args:
+        image_path (string): path to the image
+    Returns:
+        img: image opened with rasterio
+    """
+    with rasterio.open(image_path, driver='JP2OpenJPEG') as infile:
         img = infile.read(1)
-
     return img
 
 
@@ -127,6 +149,8 @@ def get_best_image_bewteen_dates(date1, date2):
     )
     return select_image_cloud(images, 0.4)
 
+
+
 def get_before_after_images(wildfire_date, observation_interval, min_size):
     """Returns the images before and after the wildfire date.
        It is filtered with a fixed cloud cover percentage at 40%.
@@ -140,7 +164,45 @@ def get_before_after_images(wildfire_date, observation_interval, min_size):
     """
     before_date = wildfire_date - timedelta(days=1)
     before_date_one_week_ago = wildfire_date - timedelta(days = observation_interval)
-    before_image = get_best_image_bewteen_dates(before_date_one_week_ago, before_date)
+    before_image_uuid = get_best_image_bewteen_dates(before_date_one_week_ago, before_date)
     last_observation_date = wildfire_date + timedelta(days = observation_interval)
-    after_image = get_best_image_bewteen_dates(wildfire_date, last_observation_date)
+    after_image_uuid = get_best_image_bewteen_dates(wildfire_date, last_observation_date)    
     return before_image, after_image
+
+def create_tiff_image(uuid, path, name):
+    """Create the tiff image from the uuid.
+    Args:
+        uuid (string): uuid of the image
+        temporary_folder (string): path to the folder where the data will be temporarily stored.
+        name (string): name of tiff file
+    Returns:
+        image: image with the given uuid
+    """
+    api.download(uuid, path)
+    #unzip the file with zipfile
+    with zipfile.ZipFile(path, 'r') as zip_ref:
+        zip_ref.extractall(path)
+    image_path_b04 = get_band(path,"B04",resolution=10)
+    image_path_b08 = get_band(path,"B08",resolution=10)
+    band4 = open_rasterio(image_path_b04)
+    band8 = open_rasterio(image_path_b08)
+    red = band4.astype('float64')
+    nir = band8.astype('float64')
+    ndvi = np.where(
+        (nir + red) == 0.,
+        0.,
+        (nir - red) / (nir + red)
+    )
+    ndvi_img = rasterio.open(
+        f'./output/{name}.tiff, 'w', driver='GTiff',
+        width=band4.width,
+        height=band4.height, 
+        count=1,
+        crs=band4.crs,
+        transform=band4.transform,
+        dtype='float64'
+    )
+    ndvi_img.write(ndvi, 1)
+    ndvi_img.close()
+    
+    return rasterio.open(f'./output/{name}.tiff')
