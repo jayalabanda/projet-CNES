@@ -14,7 +14,6 @@ import pandas as pd
 from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 import utm
 
-
 def get_band(image_folder, band, resolution=10):
     """Returns an image opened with rasterio with the given band and resolution    
 
@@ -58,7 +57,6 @@ def open_rasterio(image_path):
         img = infile.read(1)
     return img
 
-
 def threshold_filter(image, threshold):
     """Puts all values below threshold to 0.
 
@@ -71,7 +69,6 @@ def threshold_filter(image, threshold):
     """
     image[image < threshold] = 0
     return image
-
 
 def calculate_area(image):
     """Calculates the area of the image.
@@ -89,7 +86,6 @@ def calculate_area(image):
     # remove the line below once the area using coordinates is calculated has been implemented.
     area = ratio
     return area
-
 
 def merge_four_images(image_array):
     """
@@ -130,7 +126,8 @@ def select_image_cloud(images_df,cloud_threshold):
     images_df = images_df[images_df.cloudcoverpercentage < cloud_threshold]
     best_image = images_df[images_df.cloudcoverpercentage == images_df.cloudcoverpercentage.min()]
     uuid = best_image.iloc[0]["uuid"]
-    return uuid
+    title = best_image.iloc[0]["title"]
+    return uuid, title
 
 def get_best_image_bewteen_dates(date1, date2):
     """Return the image with the lowest cloud cover percentage between two dates.
@@ -149,9 +146,7 @@ def get_best_image_bewteen_dates(date1, date2):
     )
     return select_image_cloud(images, 0.4)
 
-
-
-def get_before_after_images(wildfire_date, observation_interval, min_size):
+def get_before_after_images(wildfire_date, observation_interval):
     """Returns the images before and after the wildfire date.
        It is filtered with a fixed cloud cover percentage at 40%.
     Args:
@@ -164,12 +159,23 @@ def get_before_after_images(wildfire_date, observation_interval, min_size):
     """
     before_date = wildfire_date - timedelta(days=1)
     before_date_one_week_ago = wildfire_date - timedelta(days = observation_interval)
-    before_image_uuid = get_best_image_bewteen_dates(before_date_one_week_ago, before_date)
+    before_image_uuid, title1 = get_best_image_bewteen_dates(before_date_one_week_ago, before_date)
     last_observation_date = wildfire_date + timedelta(days = observation_interval)
-    after_image_uuid = get_best_image_bewteen_dates(wildfire_date, last_observation_date)    
+    after_image_uuid, title2 = get_best_image_bewteen_dates(wildfire_date, last_observation_date)    
+    before_image = create_tiff_image(
+        uuid = before_image_uuid,
+        title = title1,
+        path = "./data",
+        name = "ndvi_before")
+    after_image = create_tiff_image(
+        uuid = after_image_uuid,
+        title = title2,
+        path = "./data",
+        name = "ndvi_after"
+    )
     return before_image, after_image
 
-def create_tiff_image(uuid, path, name):
+def create_tiff_image(uuid,title, path, name):
     """Create the tiff image from the uuid.
     Args:
         uuid (string): uuid of the image
@@ -178,10 +184,14 @@ def create_tiff_image(uuid, path, name):
     Returns:
         image: image with the given uuid
     """
-    api.download(uuid, path)
+    path = "./data/"
+    dirs = os.listdir(path)
+    dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
+    if not title in dirs_safe:
+        api.download(uuid, path)
     #unzip the file with zipfile
-    with zipfile.ZipFile(path, 'r') as zip_ref:
-        zip_ref.extractall(path)
+        with zipfile.ZipFile(path, 'r') as zip_ref:
+            zip_ref.extractall(path)
     image_path_b04 = get_band(path,"B04",resolution=10)
     image_path_b08 = get_band(path,"B08",resolution=10)
     band4 = open_rasterio(image_path_b04)
