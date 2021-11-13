@@ -116,8 +116,8 @@ def threshold_filter(image, threshold):
     """Puts all values below threshold to 0.
 
     Args:
-        image : Already imported image
-        threshold (float): Threshold value
+        image: already imported image
+        threshold (float): threshold value
     Returns:
         image: image where all values below threshold are set to 0
     """
