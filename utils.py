@@ -71,8 +71,8 @@ def threshold_filter(image, threshold):
     """Puts all values below threshold to 0.
 
     Args:
-        image: Already imported image
-        threshold (float): Threshold value
+        image: already imported image
+        threshold (float): threshold value
 
     Returns:
         image: image where all values below threshold are set to 0
@@ -81,21 +81,22 @@ def threshold_filter(image, threshold):
     return image
 
 
-def calculate_area(image):
-    """Calculates the area of the burnt area.
+def calculate_area(sub_image, original_image, resolution=10):
+    """Calculates the surface of the burnt area.
 
     Args:
-        image: Already imported image
+        sub_image: already imported image
+        original_image: already imported image
+        resolution (int): resolution of the image. Defaults to 10.
+            (10m = 10, 20m = 20, 60m = 60)
 
     Returns:
-        area: area of the image
+        area: area of the image in squared kilometers
     """
-    count = np.count_nonzero(image)
-    ratio = count / image.size
-    # multiply ratio by the actual area of the image using coordinates
-    # remove the line below once the area using coordinates is calculated has been implemented.
-    area = ratio
-    return area
+    count = np.count_nonzero(sub_image)
+    original_area = original_image.size * resolution**2 / 1_000_000  # km^2
+    sub_image_area = sub_image.size / original_image.size * original_area
+    return count / sub_image.size * sub_image_area
 
 
 def merge_four_images(image_array):
@@ -110,7 +111,7 @@ def merge_four_images(image_array):
 
     Returns:
         final_mage: one final image that has all 4 images merged together
-    """,
+    """
     image1 = image_array[0]
     image2 = image_array[1]
     image3 = image_array[2]

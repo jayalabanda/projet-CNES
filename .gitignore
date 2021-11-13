@@ -4,6 +4,9 @@
 *.png
 *.zip
 
+# data files
+*.csv
+
 # folders
 *.SAFE/
 .ipynb_checkpoints/
