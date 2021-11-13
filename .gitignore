@@ -2,6 +2,7 @@
 *.tiff
 *.jp2
 *.png
+*.zip
 
 # folders
 *.SAFE/
