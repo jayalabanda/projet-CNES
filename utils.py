@@ -15,8 +15,88 @@ from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 import utm
 
 
+def get_dataframe_between_dates(api, date1, date2, geojson_path, cloud_threshold=40):
+    """Retrieve a dataframe containing all the information between two dates.
+
+    Args:
+        api (SentinelAPI): API object
+        date1 (datetime): date of the first observation
+        date2 (datetime): date of the second observation
+        geojson_path (string): path to the geojson file
+        cloud_threshold (float): threshold for cloud coverage. Defaults to 40
+
+    Returns:
+        a dataframe with information about the images between the two dates
+    """
+    shape = geojson_to_wkt(read_geojson(geojson_path))
+    images = api.query(
+        area=shape,
+        date=(date1, date2),
+        platformname="Sentinel-2",
+        processinglevel="Level-2A",
+        cloudcoverpercentage=(0, cloud_threshold)
+    )
+    images_df = api.to_dataframe(images)
+    print(f"Number of images between {date1} and {date2}: {len(images_df)}")
+
+    key_columns = ["cloudcoverpercentage", "title"]
+    # print(images_df[key_columns].head())
+    print("Retrieved dataframe.")
+    return images_df
+
+
+def select_image_cloud(images_df, cloud_threshold=40):
+    """Select images with cloud cover less than cloud_threshold.
+       Return the one with the lowest cloud coverage.
+
+    Args:
+        images_df (dataframe): dataframe containing images
+        cloud_threshold (float): threshold for cloud coverage. Defaults to 40
+
+    Returns:
+        uuid (string): uuid of the selected image
+        title (string): title on the selected image (corresponds to a column)
+    """
+    images_df = images_df[images_df.cloudcoverpercentage < cloud_threshold]
+    best_image = images_df[images_df.cloudcoverpercentage ==
+                           images_df.cloudcoverpercentage.min()]
+    uuid = best_image.iloc[0]["uuid"]
+    title = best_image.iloc[0]["title"]
+    return uuid, title
+
+
+def download_from_api(api, uuid, title, path='./data/'):
+    """Download the image from the API.
+
+    Args:
+        api (SentinelAPI): API object
+        uuid (string): uuid of the image
+        path (string): path to save the image
+
+    Returns:
+        image: image with the given uuid
+    """
+    dirs = os.listdir(path)
+    dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
+
+    if (title + '.SAFE') not in dirs_safe:
+        print("Downloading image from the API.")
+        api.download(uuid, path)
+
+    dirs = os.listdir(path)
+    zips = any(".zip" in dir for dir in dirs)
+    if zips:
+        # unzip the file with zipfile
+        path_to_zip = path + title + ".zip"
+        print("Unzipping file.")
+        with zipfile.ZipFile(path_to_zip, 'r') as zip_ref:
+            zip_ref.extractall(path)
+        print("Deleting zip file.")
+        os.remove(path_to_zip)
+
+
 def get_band(image_folder, band, resolution=10):
-    """Returns an image opened with rasterio with the given band and resolution    
+    """Returns an image opened with rasterio with the given band and resolution.
 
     Args:
         image_folder (path): path to the folder containing the image
@@ -33,26 +113,15 @@ def get_band(image_folder, band, resolution=10):
         image_folder_path) if im[-4:] == ".jp2"]
     # retrieve jp2 image file
     selected_file = [im for im in image_files if im.split("_")[2] == band][0]
-    return os.path.join(image_folder_path, selected_file)
-
-
-# def download_from_api(df, api, index):
-#     """Downloads images from the API and saves them to the disk as a zip file.
-
-#     Args:
-#         df (dataframe): dataframe containing the images to download
-#         api (SentinelAPI): API object
-#         index (int): index of the image to download
-#     """
-#     uuid = df["uuid"].values[index]
-#     api.download(uuid)
+    return image_folder_path + "/" + selected_file
 
 
 def open_rasterio(image_path):
     """Opens the image with rasterio.
 
     Args:
-        image_path (string): path to the image
+        image_path (string): path to the tiff image
+
     Returns:
         img: image opened with rasterio
     """
@@ -61,35 +130,33 @@ def open_rasterio(image_path):
     return img
 
 
-def create_tiff_image(api, uuid, title, path, name):
+def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
     """Create the tiff image from the uuid.
+        This function downloads the image from the API and saves it to the disk.
+        Be mindful of the size of the file.
 
     Args:
         api (SentinelAPI): API object
         uuid (string): uuid of the image
         title (string): named column in the images dataframe
+        path_to_zip (string): path to the zip file
         path (string): path to save the tiff file
-        name (string): name of the tiff file
+        when (string): name of the tiff file. Usually 'before' or 'after'
+
     Returns:
         image: image with the given uuid
     """
-    dirs = os.listdir(path)
-    dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
+    image_path_b1 = get_band(path, band1, resolution=resolution)
+    image_path_b2 = get_band(path, band2, resolution=resolution)
 
-    if title not in dirs_safe:
-        api.download(uuid, path)
-        # unzip the file with zipfile
-        with zipfile.ZipFile(path, 'r') as zip_ref:
-            zip_ref.extractall(path)
+    print("First image selected:", image_path_b1.split("/")[-1])
+    print("Second image selected:", image_path_b2.split("/")[-1])
 
-    image_path_b04 = get_band(path, "B04", resolution=10)
-    image_path_b08 = get_band(path, "B08", resolution=10)
+    first_band = rasterio.open(image_path_b1, driver='JP2OpenJPEG')
+    second_band = rasterio.open(image_path_b2, driver='JP2OpenJPEG')
 
-    band4 = open_rasterio(image_path_b04)
-    band8 = open_rasterio(image_path_b08)
-
-    red = band4.astype('float64')
-    nir = band8.astype('float64')
+    red = first_band.read(1).astype('float64')
+    nir = second_band.read(1).astype('float64')
 
     ndvi = np.where(
         (nir + red) == 0.,
@@ -98,18 +165,100 @@ def create_tiff_image(api, uuid, title, path, name):
     )
 
     ndvi_img = rasterio.open(
-        f'./output/{name}.tiff' 'w', driver='GTiff',
-        width=band4.width,
-        height=band4.height,
+        fp=f'./output/{when}.tiff', mode='w', driver='GTiff',
+        width=first_band.width,
+        height=first_band.height,
         count=1,
-        crs=band4.crs,
-        transform=band4.transform,
+        crs=first_band.crs,
+        transform=first_band.transform,
         dtype='float64'
     )
+
+    first_band.close()
+    second_band.close()
+
+    # we only need one band which corresponds to the NDVI
     ndvi_img.write(ndvi, 1)
     ndvi_img.close()
 
-    return rasterio.open(f'./output/{name}.tiff')
+    return rasterio.open(f'{output_folder}/{when}.tiff')
+
+
+# def get_image(api, geojson_path, wildfire_date, observation_interval,
+#               band1, band2, output_folder, path='./data/', when='before',
+#               cloud_threshold=40, resolution=10):
+def get_image(api, wildfire_date, observation_interval,
+              when='before', *args, **kwargs):
+
+    if when == 'before':
+        before_date = wildfire_date - timedelta(days=1)
+        before_date_one_week_ago = wildfire_date - \
+            timedelta(days=observation_interval)
+
+        df = get_dataframe_between_dates(
+            api, before_date_one_week_ago, before_date,
+            *args, **kwargs
+        )
+        uuid, title = select_image_cloud(df)
+        print(f'Image before the wildfire: {title}')
+        download_from_api(api, uuid, title)
+
+        return create_tiff_image(
+            when='before', *args, **kwargs,
+        )
+
+    elif when == 'after':
+        last_observation_date = wildfire_date + \
+            timedelta(days=observation_interval)
+
+        df = get_dataframe_between_dates(
+            api, wildfire_date, last_observation_date,
+            *args, **kwargs
+        )
+        uuid, title = select_image_cloud(df)
+        print(f'Image after the wildfire: {title}')
+        download_from_api(api, uuid, title)
+
+        return create_tiff_image(
+            when='after',
+            *args, **kwargs
+        )
+
+    else:
+        raise ValueError(
+            f"{when} is not a valid value. It should be 'before' or 'after'"
+        )
+
+
+# def get_before_after_images(api, geojson_path, wildfire_date, observation_interval,
+#                             band1, band2, output_folder,
+#                             cloud_threshold=40, resolution=10):
+def get_before_after_images(*args, **kwargs):
+    """Returns the images before and after the wildfire date.
+       It is filtered with a fixed cloud cover percentage at 40%.
+
+    Args:
+        api (SentinelAPI): API object
+        wildfire_date (date): date of the wildfire
+        observation_interval (int): interval between observations
+        geojson_path (string): path to the geojson file
+        cloud_threshold (float): threshold for cloud coverage. Defaults to 40
+
+    Returns:
+        before_image: image before the wildfire
+        after_image: image after the wildfire
+    """
+    before_image = get_image(
+        *args, **kwargs, when='before'
+    )
+    print("Created image from before the fire.")
+
+    after_image = get_image(
+        *args, **kwargs, when='after'
+    )
+    print("Created image from after the fire.")
+
+    return before_image, after_image
 
 
 def threshold_filter(image, threshold):
@@ -118,6 +267,7 @@ def threshold_filter(image, threshold):
     Args:
         image: already imported image
         threshold (float): threshold value
+
     Returns:
         image: image where all values below threshold are set to 0
     """
@@ -126,13 +276,14 @@ def threshold_filter(image, threshold):
 
 
 def calculate_area(sub_image, original_image, resolution=10):
-    """Calculates the surface of the burnt area.
+    """Calculates the surface, in squared kilometers, of the burnt area.
 
     Args:
         sub_image: already imported image after thresholding
         original_image: tiff image obtained from the API
         resolution (int): resolution of the image. Defaults to 10
             (10m = 10, 20m = 20, 60m = 60)
+
     Returns:
         area: area of the image in squared kilometers
     """
@@ -150,7 +301,8 @@ def merge_four_images(image_array):
     Args:
         image_array (list): list of the 4 images that need to be merged.
             First image: upper left, second image: upper right.
-            Third image: lower left, fourth image: lower right. 
+            Third image: lower left, fourth image: lower right.
+
     Returns:
         final_mage: one final image that has all 4 images merged together
     """
@@ -167,94 +319,3 @@ def merge_four_images(image_array):
     final_image[:n, m:] = image3
     final_image[n:, m:] = image4
     return final_image
-
-
-def select_image_cloud(images_df, cloud_threshold=0.4):
-    """Select images with cloud cover less than cloud_threshold.
-       Return the one with the lowest cloud coverage. 
-
-    Args:
-        images_df (dataframe): dataframe containing images
-        cloud_threshold (float): threshold for cloud coverage. Defaults to 0.4
-
-    Returns:
-        uuid (string): uuid of the selected image.
-    """
-    images_df = images_df[images_df.cloudcoverpercentage < cloud_threshold]
-    best_image = images_df[images_df.cloudcoverpercentage ==
-                           images_df.cloudcoverpercentage.min()]
-    uuid = best_image.iloc[0]["uuid"]
-    title = best_image.iloc[0]["title"]
-    return uuid, title
-
-
-def get_best_image_bewteen_dates(api, date1, date2, geojson_path, cloud_threshold=0.4):
-    """Return the image with the lowest cloud cover percentage between two dates.
-
-    Args:
-        api (SentinelAPI): API object
-        date1 (datetime): date of the first observation
-        date2 (datetime): date of the second observation
-        geojson_path (string): path to the geojson file
-        cloud_threshold (float): threshold for cloud coverage. Defaults to 0.4
-    Returns:
-        uuid and title of the image
-    """
-    shape = geojson_to_wkt(read_geojson(geojson_path))
-    images = api.query(
-        shape,
-        date=(date1, date2),
-        platformname="Sentinel-2",
-        processinglevel="Level-2A",
-        cloudcoverpercentage=(0, cloud_threshold)
-    )
-    return select_image_cloud(images, cloud_threshold)
-
-
-def get_before_after_images(api, wildfire_date, observation_interval,
-                            geojson_path, cloud_threshold=0.4):
-    """Returns the images before and after the wildfire date.
-       It is filtered with a fixed cloud cover percentage at 40%.
-
-    Args:
-        api (SentinelAPI): API object
-        wildfire_date (date): date of the wildfire
-        observation_interval (int): interval between observations
-        geojson_path (string): path to the geojson file
-        cloud_threshold (float): threshold for cloud coverage. Defaults to 0.4
-    Returns:
-        before_image: image before the wildfire
-        after_image: image after the wildfire
-    """
-    before_date = wildfire_date - timedelta(days=1)
-    before_date_one_week_ago = wildfire_date - \
-        timedelta(days=observation_interval)
-
-    before_image_uuid, title1 = get_best_image_bewteen_dates(
-        api, before_date_one_week_ago, before_date,
-        geojson_path, cloud_threshold
-    )
-
-    last_observation_date = wildfire_date + \
-        timedelta(days=observation_interval)
-
-    after_image_uuid, title2 = get_best_image_bewteen_dates(
-        api, wildfire_date, last_observation_date,
-        geojson_path, cloud_threshold
-    )
-
-    before_image = create_tiff_image(
-        api=api,
-        uuid=before_image_uuid,
-        title=title1,
-        path="./data",
-        name="ndvi_before"
-    )
-    after_image = create_tiff_image(
-        api=api,
-        uuid=after_image_uuid,
-        title=title2,
-        path="./data",
-        name="ndvi_after"
-    )
-    return before_image, after_image
