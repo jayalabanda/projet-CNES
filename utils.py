@@ -1,7 +1,9 @@
+import utm
+from sentinelsat import read_geojson, geojson_to_wkt
+import numpy as np
 import os
 import cv2
-from datetime import date, datetime, timedelta
-import json
+from datetime import timedelta
 import itertools
 import zipfile
 
@@ -9,10 +11,7 @@ import rasterio
 from rasterio import plot
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
-import pandas as pd
-from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
-import utm
+sns.set_style('darkgrid')
 
 
 def get_dataframe_between_dates(api, date1, date2, geojson_path, cloud_threshold=40):
@@ -38,30 +37,36 @@ def get_dataframe_between_dates(api, date1, date2, geojson_path, cloud_threshold
     )
     images_df = api.to_dataframe(images)
     print(f"Number of images between {date1} and {date2}: {len(images_df)}")
-
-    key_columns = ["cloudcoverpercentage", "title"]
-    # print(images_df[key_columns].head())
     print("Retrieved dataframe.")
     return images_df
 
 
-def select_image_cloud(images_df, cloud_threshold=40):
-    """Select images with cloud cover less than cloud_threshold.
-       Return the one with the lowest cloud coverage.
+def minimize_dataframe(df):
+    """Creates a score for the dataframe using a weighted average of
+        cloud cover, vegetation cover, and water presence.
 
     Args:
-        images_df (dataframe): dataframe containing images
-        cloud_threshold (float): threshold for cloud coverage. Defaults to 40
+        df (dataframe): dataframe containing all the information
 
     Returns:
-        uuid (string): uuid of the selected image
-        title (string): title on the selected image (corresponds to a column)
+        uuid: uuid of the best image
+        title: title of the best image
     """
-    images_df = images_df[images_df.cloudcoverpercentage < cloud_threshold]
-    best_image = images_df[images_df.cloudcoverpercentage ==
-                           images_df.cloudcoverpercentage.min()]
-    uuid = best_image.iloc[0]["uuid"]
-    title = best_image.iloc[0]["title"]
+    coeffs = [2, 0.1, 4]
+    key_columns = ["cloudcoverpercentage",
+                   "vegetationpercentage",
+                   "waterpercentage"]
+
+    df_min = df.copy()
+    score = (df[key_columns[0]] * coeffs[0]) +\
+            (df[key_columns[1]] * coeffs[1]) +\
+            (df[key_columns[2]] * coeffs[2]) / sum(coeffs)
+
+    df_min["score"] = score
+    df_min.sort_values(by="score", inplace=True, ascending=True)
+
+    uuid = df_min.iloc[0]["uuid"]
+    title = df_min.iloc[0]["title"]
     return uuid, title
 
 
@@ -71,10 +76,11 @@ def download_from_api(api, uuid, title, path='./data/'):
     Args:
         api (SentinelAPI): API object
         uuid (string): uuid of the image
-        path (string): path to save the image
+        title (string): title of the image (named column in the dataframe)
+        path (string): path to save the image. Defaults to './data/'
 
     Returns:
-        image: image with the given uuid
+        none
     """
     dirs = os.listdir(path)
     dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
@@ -130,6 +136,23 @@ def open_rasterio(image_path):
     return img
 
 
+def calculate_ndvi(red_band, nir_band):
+    """Calculates the NDVI of a given image.
+
+    Args:
+        red_band (array): red band of the image
+        nir_band (array): nir band of the image
+
+    Returns:
+        ndvi: NDVI of the image
+    """
+    # ignore warnings for this block of code
+    with np.errstate(divide='ignore', invalid='ignore'):
+        return np.where(nir_band + red_band == 0.,
+                        0.,
+                        (nir_band - red_band) / (nir_band + red_band))
+
+
 def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
     """Create the tiff image from the uuid.
         This function downloads the image from the API and saves it to the disk.
@@ -158,11 +181,7 @@ def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
     red = first_band.read(1).astype('float64')
     nir = second_band.read(1).astype('float64')
 
-    ndvi = np.where(
-        (nir + red) == 0.,
-        0.,
-        (nir - red) / (nir + red)
-    )
+    ndvi = calculate_ndvi(red, nir)
 
     ndvi_img = rasterio.open(
         fp=f'./output/{when}.tiff', mode='w', driver='GTiff',
@@ -189,7 +208,6 @@ def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
 #               cloud_threshold=40, resolution=10):
 def get_image(api, wildfire_date, observation_interval,
               when='before', *args, **kwargs):
-
     if when == 'before':
         before_date = wildfire_date - timedelta(days=1)
         before_date_one_week_ago = wildfire_date - \
@@ -199,7 +217,7 @@ def get_image(api, wildfire_date, observation_interval,
             api, before_date_one_week_ago, before_date,
             *args, **kwargs
         )
-        uuid, title = select_image_cloud(df)
+        uuid, title = minimize_dataframe(df)
         print(f'Image before the wildfire: {title}')
         download_from_api(api, uuid, title)
 
@@ -215,7 +233,7 @@ def get_image(api, wildfire_date, observation_interval,
             api, wildfire_date, last_observation_date,
             *args, **kwargs
         )
-        uuid, title = select_image_cloud(df)
+        uuid, title = minimize_dataframe(df)
         print(f'Image after the wildfire: {title}')
         download_from_api(api, uuid, title)
 
