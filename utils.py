@@ -1,5 +1,5 @@
 import utm
-from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
+from sentinelsat import read_geojson, geojson_to_wkt
 import numpy as np
 import os
 import cv2
@@ -82,7 +82,7 @@ def convert_size(df):
     # we convert the data types
     df = df.convert_dtypes()
 
-    # the "size" column is string
+    # the "size" column is of type string
     # if the unit of "size" is 'GB', we convert it to 'MB'
     cond = df["size"].apply(lambda x: x.split(" ")[1]) == 'GB'
     df["size"] = np.where(
@@ -113,7 +113,7 @@ def get_uuid_title(df):
     # large enough, since images with no data are smaller
     i = 0
     size = df["size"].values[i]
-    while size < 800. and i <= df.shape[0]:
+    while size < 900. and i <= df.shape[0]:
         i += 1
         size = df["size"].values[i]
 
@@ -122,6 +122,7 @@ def get_uuid_title(df):
     print(
         f"Retrieved best uuid and title from the dataframe on row {i + 1}.\n"
     )
+    print(f"uuid: {uuid}, title: {title}")
 
     key_cols = ["cloudcoverpercentage",
                 "vegetationpercentage",
@@ -164,7 +165,7 @@ def download_from_api(api, uuid, title, path='./data/'):
         os.remove(path_to_zip)
 
 
-def get_band(image_folder, band, resolution=10):
+def get_band(image_folder, band, resolution):
     """Returns an image opened with rasterio with the given band and resolution.
 
     Args:
@@ -216,9 +217,9 @@ def calculate_ndvi(red_band, nir_band):
                         (nir_band - red_band) / (nir_band + red_band))
 
 
-def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
+def create_tiff_image(path, when, band1, band2, output_folder='output/', resolution=10):
     """Create the tiff image from the uuid.
-        This function downloads the image from the API and saves it to the disk.
+        This function creates the tiff image.
         Be mindful of the size of the file.
 
     Args:
@@ -226,7 +227,7 @@ def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
         when (string): name of the tiff file. Usually 'before' or 'after'
 
     Returns:
-        image: image with the given uuid
+        image: opened image with the given uuid
     """
     image_path_b1 = get_band(path, band1, resolution=resolution)
     image_path_b2 = get_band(path, band2, resolution=resolution)
@@ -242,6 +243,7 @@ def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
 
     ndvi = calculate_ndvi(red, nir)
 
+    # create the tiff file
     ndvi_img = rasterio.open(
         fp=f'{output_folder}{when}.tiff',
         mode='w', driver='GTiff',
@@ -260,15 +262,30 @@ def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
     ndvi_img.write(ndvi, 1)
     ndvi_img.close()
 
-    return rasterio.open(f'{output_folder}{when}.tiff')
+    return rasterio.open(f'{output_folder}{when}.tiff').read(1)
 
 
-# def get_image(api, geojson_path, wildfire_date, observation_interval,
-#               band1, band2, output_folder, path='./data/', when='before',
-#               cloud_threshold=40, resolution=10):
 def get_image(api, wildfire_date, observation_interval,
-              path, when='before', **kwargs):
+              path, when=None, **kwargs):
+    """Get the image from the API.
 
+    Args:
+        api (SentinelAPI): API object
+        wildfire_date (string): date of the wildfire
+        observation_interval (string): interval of the observation
+        path (string): path to save the image. Defaults to './data/'
+        when (string): name of the tiff file, either 'before' or 'after'
+        **kwargs: keyword arguments are:
+            - geojson_path (string): path to the geojson file
+            - cloud_threshold (int): threshold for cloud cover. Defaults to 40.
+            - band1 (string): band to be extracted. Can be 'B01', 'B02', for example
+            - band2 (string): band to be extracted. Can be 'B01', 'B02', for example
+            - resolution (int): Resolution of the image. Defaults to 10.
+            - output_folder (string): path to save the tiff file. Defaults to 'output/'
+
+    Returns:
+        opened tiff file
+    """
     if when not in ['before', 'after']:
         raise ValueError(
             f"{when} is not a valid value. It should be 'before' or 'after'"
@@ -280,10 +297,10 @@ def get_image(api, wildfire_date, observation_interval,
         before_date_one_week_ago = wildfire_date - \
             dt.timedelta(days=observation_interval)
 
-        # retrieve the uuid of the best image then download it
         df = get_dataframe_between_dates(
             api, before_date_one_week_ago, before_date,
-            geojson_path=kwargs['geojson_path']
+            geojson_path=kwargs['geojson_path'],
+            cloud_threshold=kwargs['cloud_threshold'],
         )
 
     elif when == 'after':
@@ -292,9 +309,11 @@ def get_image(api, wildfire_date, observation_interval,
 
         df = get_dataframe_between_dates(
             api, wildfire_date, last_observation_date,
-            geojson_path=kwargs['geojson_path']
+            geojson_path=kwargs['geojson_path'],
+            cloud_threshold=kwargs['cloud_threshold']
         )
 
+    # retrieve the uuid of the best image then download it
     df = minimize_dataframe(df)
     uuid, title = get_uuid_title(df)
     download_from_api(api, uuid, title)
@@ -307,33 +326,37 @@ def get_image(api, wildfire_date, observation_interval,
     )
 
 
-# def get_before_after_images(api, geojson_path, wildfire_date, observation_interval,
-#                             band1, band2, output_folder,
-#                             cloud_threshold=40, resolution=10):
-def get_before_after_images(*args, **kwargs):
+def get_before_after_images(**kwargs):
     """Returns the images before and after the wildfire date.
-       It is filtered with a fixed cloud cover percentage at 40%.
+    Multiple keyword arguments are required that ares passed
+    to the 'get_image' function.
 
     Args:
         api (SentinelAPI): API object
+        path (string): path to save the downloaded files. Default is 'data/'
         wildfire_date (date): date of the wildfire
-        observation_interval (int): interval between observations
-        geojson_path (string): path to the geojson file
-        cloud_threshold (float): threshold for cloud coverage. Defaults to 40
+        geojsont_path (string): path to the geojson file
+        observation_interval (int): interval between observations in days
+        output_folder (string): path to the output folder. Default is 'output/'
+        band1 (string): band to be used for the NDVI calculation. Default is 'B04'
+        band2 (string): band to be used for the NDVI calculation. Default is 'B08'
+        cloud_threshold (int): threshold for cloud coverage. Default is 40
+        resolution (int): resolution of the images. Default is 10
 
     Returns:
         before_image: image before the wildfire
         after_image: image after the wildfire
     """
     before_image = get_image(
-        *args, **kwargs, when='before'
+        when='before', **kwargs
     )
-    print("Created image from before the fire.")
+    print("Created image from before the fire.\n")
 
+    print("-" * 30)
     after_image = get_image(
-        *args, **kwargs, when='after'
+        when='after', **kwargs
     )
-    print("Created image from after the fire.")
+    print("Created image from after the fire.\n")
 
     return before_image, after_image
 
@@ -360,7 +383,7 @@ def calculate_area(sub_image, original_image, resolution=10):
         sub_image: already imported image after thresholding
         original_image: tiff image obtained from the API
         resolution (int): resolution of the image. Defaults to 10
-            (10m = 10, 20m = 20, 60m = 60)
+            (10 means 1 pixel = 10m, etc.)
 
     Returns:
         area: area of the image in squared kilometers
@@ -378,8 +401,8 @@ def merge_four_images(image_array):
 
     Args:
         image_array (list): list of the 4 images that need to be merged.
-            First image: upper left, second image: upper right.
-            Third image: lower left, fourth image: lower right.
+            First image: upper left. Second image: upper right.
+            Third image: lower left. Fourth image: lower right.
 
     Returns:
         final_mage: one final image that has all 4 images merged together
@@ -389,9 +412,8 @@ def merge_four_images(image_array):
     image3 = image_array[2]
     image4 = image_array[3]
     # get the shapes of the initial images to make an image that is twice as big
-    n = image1.shape[0]
-    m = image1.shape[1]
-    final_image = np.zeros((2 * n, 2 * m), np.uint8)
+    n, m = image1.shape
+    final_image = np.zeros((2 * n, 2 * m), np.float64)
     final_image[:n, :m] = image1
     final_image[n:, :m] = image2
     final_image[:n, m:] = image3
