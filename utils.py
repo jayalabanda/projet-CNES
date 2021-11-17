@@ -1,17 +1,16 @@
 import utm
-from sentinelsat import read_geojson, geojson_to_wkt
+from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 import numpy as np
 import os
 import cv2
-from datetime import timedelta
+import datetime as dt
 import itertools
 import zipfile
+import json
 
 import rasterio
 from rasterio import plot
 import matplotlib.pyplot as plt
-import seaborn as sns
-sns.set_style('darkgrid')
 
 
 def get_dataframe_between_dates(api, date1, date2, geojson_path, cloud_threshold=40):
@@ -35,15 +34,68 @@ def get_dataframe_between_dates(api, date1, date2, geojson_path, cloud_threshold
         processinglevel="Level-2A",
         cloudcoverpercentage=(0, cloud_threshold)
     )
+
     images_df = api.to_dataframe(images)
+    print("Retrieved dataframe.\n")
     print(f"Number of images between {date1} and {date2}: {len(images_df)}")
-    print("Retrieved dataframe.")
     return images_df
 
 
 def minimize_dataframe(df):
     """Creates a score for the dataframe using a weighted average of
         cloud cover, vegetation cover, and water presence.
+        More vegetation is better, and less water and cloud is better.
+
+    Args:
+        df (dataframe): dataframe containing all the information
+
+    Returns:
+        df: dataframe with a score for each image. Lower is better.
+    """
+    # the coefficients are arbitrary but allow for
+    # giving more importance to the vegeation presence
+    coeffs = [2, 0.1, 4]
+    key_columns = ["cloudcoverpercentage",
+                   "vegetationpercentage",
+                   "waterpercentage"]
+
+    print("Minimizing dataframe...\n")
+    df_min = df.copy()
+    score = (df_min[key_columns[0]] * coeffs[0]) +\
+            (df_min[key_columns[1]] * coeffs[1]) +\
+            (df_min[key_columns[2]] * coeffs[2]) / sum(coeffs)
+
+    df_min["score"] = score
+    df_min.sort_values(by="score", inplace=True, ascending=True)
+    return df_min
+
+
+def convert_size(df):
+    """Converts the size of the images from GB to MB.
+
+    Args:
+        df (dataframe): dataframe
+
+    Returns:
+        df: dataframe with the size in MB
+    """
+    # we convert the data types
+    df = df.convert_dtypes()
+
+    # the "size" column is string
+    # if the unit of "size" is 'GB', we convert it to 'MB'
+    cond = df["size"].apply(lambda x: x.split(" ")[1]) == 'GB'
+    df["size"] = np.where(
+        cond,
+        df["size"].apply(lambda x: float(x.split(" ")[0]) * 1024),
+        df["size"].apply(lambda x: float(x.split(" ")[0]))
+    )
+
+    return df
+
+
+def get_uuid_title(df):
+    """Returns the uuid and title of the best image.
 
     Args:
         df (dataframe): dataframe containing all the information
@@ -52,21 +104,30 @@ def minimize_dataframe(df):
         uuid: uuid of the best image
         title: title of the best image
     """
-    coeffs = [2, 0.1, 4]
-    key_columns = ["cloudcoverpercentage",
-                   "vegetationpercentage",
-                   "waterpercentage"]
+    df = convert_size(df)
+    # we drop the images with low vegetation
+    print("Dropping images with low vegetation.\n")
+    df = df[df["vegetationpercentage"] >= 60.]
 
-    df_min = df.copy()
-    score = (df[key_columns[0]] * coeffs[0]) +\
-            (df[key_columns[1]] * coeffs[1]) +\
-            (df[key_columns[2]] * coeffs[2]) / sum(coeffs)
+    # we retrieve the image with the best score as long as its size is
+    # large enough, since images with no data are smaller
+    i = 0
+    size = df["size"].values[i]
+    while size < 800. and i <= df.shape[0]:
+        i += 1
+        size = df["size"].values[i]
 
-    df_min["score"] = score
-    df_min.sort_values(by="score", inplace=True, ascending=True)
+    uuid = df.iloc[i]["uuid"]
+    title = df.iloc[i]["title"]
+    print(
+        f"Retrieved best uuid and title from the dataframe on row {i + 1}.\n"
+    )
 
-    uuid = df_min.iloc[0]["uuid"]
-    title = df_min.iloc[0]["title"]
+    key_cols = ["cloudcoverpercentage",
+                "vegetationpercentage",
+                "waterpercentage", "score",
+                "ingestiondate", "size"]
+    print(df.loc[uuid][key_cols])
     return uuid, title
 
 
@@ -85,10 +146,12 @@ def download_from_api(api, uuid, title, path='./data/'):
     dirs = os.listdir(path)
     dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
 
+    # the name of the downloaded file is title + .SAFE
     if (title + '.SAFE') not in dirs_safe:
         print("Downloading image from the API.")
         api.download(uuid, path)
 
+    # check that the zip file has been downloaded
     dirs = os.listdir(path)
     zips = any(".zip" in dir for dir in dirs)
     if zips:
@@ -113,7 +176,7 @@ def get_band(image_folder, band, resolution=10):
         img: image with the given band and resolution
     """
     subfolder = [f for f in os.listdir(
-        image_folder + "/GRANULE") if f[0] == "L"][0]
+        image_folder + "/GRANULE/") if f[0] == "L"][0]
     image_folder_path = f"{image_folder}/GRANULE/{subfolder}/IMG_DATA/R{resolution}m"
     image_files = [im for im in os.listdir(
         image_folder_path) if im[-4:] == ".jp2"]
@@ -159,10 +222,6 @@ def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
         Be mindful of the size of the file.
 
     Args:
-        api (SentinelAPI): API object
-        uuid (string): uuid of the image
-        title (string): named column in the images dataframe
-        path_to_zip (string): path to the zip file
         path (string): path to save the tiff file
         when (string): name of the tiff file. Usually 'before' or 'after'
 
@@ -172,8 +231,8 @@ def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
     image_path_b1 = get_band(path, band1, resolution=resolution)
     image_path_b2 = get_band(path, band2, resolution=resolution)
 
-    print("First image selected:", image_path_b1.split("/")[-1])
-    print("Second image selected:", image_path_b2.split("/")[-1])
+    print("First image selected for NDVI:", image_path_b1.split("/")[-1])
+    print("Second image selected for NDVI:", image_path_b2.split("/")[-1])
 
     first_band = rasterio.open(image_path_b1, driver='JP2OpenJPEG')
     second_band = rasterio.open(image_path_b2, driver='JP2OpenJPEG')
@@ -184,7 +243,8 @@ def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
     ndvi = calculate_ndvi(red, nir)
 
     ndvi_img = rasterio.open(
-        fp=f'./output/{when}.tiff', mode='w', driver='GTiff',
+        fp=f'{output_folder}{when}.tiff',
+        mode='w', driver='GTiff',
         width=first_band.width,
         height=first_band.height,
         count=1,
@@ -200,52 +260,51 @@ def create_tiff_image(path, when, band1, band2, output_folder, resolution=10):
     ndvi_img.write(ndvi, 1)
     ndvi_img.close()
 
-    return rasterio.open(f'{output_folder}/{when}.tiff')
+    return rasterio.open(f'{output_folder}{when}.tiff')
 
 
 # def get_image(api, geojson_path, wildfire_date, observation_interval,
 #               band1, band2, output_folder, path='./data/', when='before',
 #               cloud_threshold=40, resolution=10):
 def get_image(api, wildfire_date, observation_interval,
-              when='before', *args, **kwargs):
-    if when == 'before':
-        before_date = wildfire_date - timedelta(days=1)
-        before_date_one_week_ago = wildfire_date - \
-            timedelta(days=observation_interval)
+              path, when='before', **kwargs):
 
+    if when not in ['before', 'after']:
+        raise ValueError(
+            f"{when} is not a valid value. It should be 'before' or 'after'"
+        )
+
+    if when == 'before':
+        # create dates around the wildfire
+        before_date = wildfire_date - dt.timedelta(days=1)
+        before_date_one_week_ago = wildfire_date - \
+            dt.timedelta(days=observation_interval)
+
+        # retrieve the uuid of the best image then download it
         df = get_dataframe_between_dates(
             api, before_date_one_week_ago, before_date,
-            *args, **kwargs
-        )
-        uuid, title = minimize_dataframe(df)
-        print(f'Image before the wildfire: {title}')
-        download_from_api(api, uuid, title)
-
-        return create_tiff_image(
-            when='before', *args, **kwargs,
+            geojson_path=kwargs['geojson_path']
         )
 
     elif when == 'after':
         last_observation_date = wildfire_date + \
-            timedelta(days=observation_interval)
+            dt.timedelta(days=observation_interval)
 
         df = get_dataframe_between_dates(
             api, wildfire_date, last_observation_date,
-            *args, **kwargs
-        )
-        uuid, title = minimize_dataframe(df)
-        print(f'Image after the wildfire: {title}')
-        download_from_api(api, uuid, title)
-
-        return create_tiff_image(
-            when='after',
-            *args, **kwargs
+            geojson_path=kwargs['geojson_path']
         )
 
-    else:
-        raise ValueError(
-            f"{when} is not a valid value. It should be 'before' or 'after'"
-        )
+    df = minimize_dataframe(df)
+    uuid, title = get_uuid_title(df)
+    download_from_api(api, uuid, title)
+
+    image_folder = path + title + ".SAFE"
+    return create_tiff_image(
+        path=image_folder, when=when, band1=kwargs['band1'],
+        band2=kwargs['band2'], output_folder=kwargs['output_folder'],
+        resolution=kwargs['resolution']
+    )
 
 
 # def get_before_after_images(api, geojson_path, wildfire_date, observation_interval,
@@ -289,8 +348,9 @@ def threshold_filter(image, threshold):
     Returns:
         image: image where all values below threshold are set to 0
     """
-    image[image < threshold] = 0
-    return image
+    temp = image.copy()
+    temp[temp < threshold] = 0
+    return temp
 
 
 def calculate_area(sub_image, original_image, resolution=10):

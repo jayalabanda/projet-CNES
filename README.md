@@ -9,8 +9,8 @@ To-do list:
 - [ ] test current codes on a second French wildfire
 
 1. finish testing each function
+2. clean up utils.py
 
 - [ ] get wind directions with dates
 - [ ] determine what zones of terrain are affected
 - [ ] make the process as automatic as possible
-- [ ] check why NDVI images are now red
