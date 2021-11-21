@@ -217,7 +217,7 @@ def calculate_ndvi(red_band, nir_band):
                         (nir_band - red_band) / (nir_band + red_band))
 
 
-def create_tiff_image(path, when, band1, band2, output_folder='output/', resolution=10):
+def create_tiff_image(path, when, band1, band2, name, output_folder='output/', resolution=10):
     """Create the tiff image from the uuid.
         This function creates the tiff image.
         Be mindful of the size of the file.
@@ -245,7 +245,7 @@ def create_tiff_image(path, when, band1, band2, output_folder='output/', resolut
 
     # create the tiff file
     ndvi_img = rasterio.open(
-        fp=f'{output_folder}{when}.tiff',
+        fp=f'{output_folder}{when}_{name}.tiff',
         mode='w', driver='GTiff',
         width=first_band.width,
         height=first_band.height,
@@ -262,7 +262,7 @@ def create_tiff_image(path, when, band1, band2, output_folder='output/', resolut
     ndvi_img.write(ndvi, 1)
     ndvi_img.close()
 
-    return rasterio.open(f'{output_folder}{when}.tiff').read(1)
+    return rasterio.open(f'{output_folder}{when}_{name}.tiff').read(1)
 
 
 def get_image(api, wildfire_date, observation_interval,
@@ -282,6 +282,7 @@ def get_image(api, wildfire_date, observation_interval,
             - band2 (string): band to be extracted. Can be 'B01', 'B02', for example
             - resolution (int): Resolution of the image. Defaults to 10.
             - output_folder (string): path to save the tiff file. Defaults to 'output/'
+            - name (string): name of the tiff file.
 
     Returns:
         opened tiff file
@@ -321,7 +322,8 @@ def get_image(api, wildfire_date, observation_interval,
     image_folder = path + title + ".SAFE"
     return create_tiff_image(
         path=image_folder, when=when, band1=kwargs['band1'],
-        band2=kwargs['band2'], output_folder=kwargs['output_folder'],
+        band2=kwargs['band2'], name=kwargs['name'],
+        output_folder=kwargs['output_folder'],
         resolution=kwargs['resolution']
     )
 
@@ -419,3 +421,14 @@ def merge_four_images(image_array):
     final_image[:n, m:] = image3
     final_image[n:, m:] = image4
     return final_image
+
+
+def get_tci_file_path(image_folder):
+    subfolder = [f for f in os.listdir(
+        image_folder + "GRANULE") if f[0] == "L"][0]
+    image_folder_path = f"{image_folder}GRANULE/{subfolder}/IMG_DATA/R10m"
+    image_files = [im for im in os.listdir(
+        image_folder_path) if im[-4:] == ".jp2"]
+    selected_file = [im for im in image_files if im.split("_")[2] == "TCI"][0]
+
+    return f"{image_folder_path}/{selected_file}"
