@@ -6,7 +6,10 @@ The main goal is to create an "impact map" containing information about wildfire
 
 To-do list:
 
-- [ ] get wind directions with dates
+- [X] get wind directions with dates
+
+- create gradient map? or exploit the data somehow
+
 - [ ] use `var_fire` file to retrieve GPS coordinates from pixels
 - [ ] determine what zones of terrain are affected
 - [ ] make the process as automatic as possible
