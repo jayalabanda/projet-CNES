@@ -2,7 +2,7 @@
 
 Repository containing our master's project on satellite imaging.
 
-The main goal is to create an "impact map" containing information about wildfires, such as the affected area (crops, forests, etc.) or the impact of the ensuing smoke using the wind's direction.
+The main goal is to create an "impact map" containing information about wildfires, such as the affected area (crops, forests, etc.) and the impact of the ensuing smoke using the wind's direction.
 
 To-do list:
 
@@ -10,6 +10,6 @@ To-do list:
 
 - create gradient map? or exploit the data somehow
 
-- [ ] use `var_fire` file to retrieve GPS coordinates from pixels
-- [ ] determine what zones of terrain are affected
+- [ ] find new API for land cover and wind information
+- [ ] integrate new scripts ([make_gif](make_gif.py) and [test_plot](test_plot.py)) into [utils.py](utils) and [earth_engine](earth_engine.ipynb) respectively
 - [ ] make the process as automatic as possible
