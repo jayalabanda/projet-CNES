@@ -107,7 +107,7 @@ def get_uuid_title(df):
     df = convert_size(df)
     # we drop the images with low vegetation
     print("Dropping images with low vegetation.\n")
-    df = df[df["vegetationpercentage"] >= 60.]
+    df = df[df["vegetationpercentage"] >= 45.]
 
     # we retrieve the image with the best score as long as its size is
     # large enough, since images with no data are smaller
@@ -147,7 +147,7 @@ def download_from_api(api, uuid, title, path='./data/'):
     dirs = os.listdir(path)
     dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
 
-    # the name of the downloaded file is title + .SAFE
+    # the name of the downloaded file is 'title + .SAFE'
     if (title + '.SAFE') not in dirs_safe:
         print("Downloading image from the API.")
         api.download(uuid, path)
@@ -196,7 +196,7 @@ def open_rasterio(image_path):
         img: image opened with rasterio
     """
     with rasterio.open(image_path, driver='JP2OpenJPEG') as infile:
-        img = infile.read(1)
+        img = infile.read(1).astype('float64')
     return img
 
 
