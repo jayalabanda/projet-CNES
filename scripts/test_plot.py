@@ -8,7 +8,7 @@ import matplotlib.colors as mplcols
 import ee
 ee.Initialize()
 
-output_folder = 'output/'
+output_folder = '../output/pie_chart/'
 
 lc = ee.ImageCollection('MODIS/006/MCD12Q1')
 lst = ee.ImageCollection('MODIS/006/MOD11A1')
@@ -18,13 +18,13 @@ i_date = '2021-08-15'
 f_date = '2021-08-17'
 lst = lst.select('LST_Day_1km', 'QC_Day').filterDate(i_date, f_date)
 
-coords_utm = pd.read_csv('data/coords_utm_var.csv')
-lc_type = pd.read_csv('data/MODIS_LandCover_Type1.csv')
+coords_utm = pd.read_csv('../data/coords_utm_var.csv')
+lc_type = pd.read_csv('../data/MODIS_LandCover_Type1.csv')
 lc_type['Color'] = lc_type['Color'].apply(lambda x: f'#{x}')
 
 scale = 1000
 
-for choose in range(550, 1001, 50):
+for choose in range(50, 1001, 50):
     np.random.seed(42)
     covers = []
     random_idxs = np.sort(
@@ -35,7 +35,7 @@ for choose in range(550, 1001, 50):
     for i in random_idxs:
         u_lat, u_lon = coords_utm.iloc[i]['latitude'], coords_utm.iloc[i]['longitude']
         u_poi = ee.Geometry.Point(u_lon, u_lat)
-        time.sleep(0.25)
+        # time.sleep(0.25)
 
         try:
             lc_urban_point = lc.first().sample(u_poi, scale).first().get('LC_Type1').getInfo()
@@ -46,19 +46,19 @@ for choose in range(550, 1001, 50):
     if None in covers:
         covers = [i for i in covers if i]
     covers = dict(Counter(covers))
+    covers = dict(sorted(covers.items(), key=lambda x:x[0]))
     print(covers)
 
     labels = [lc_type.loc[lc_type['Value'] == i]['Description'].values[0]
-              for i in covers.keys()]
+              for i in covers]
     labels = [i.split(':')[0] for i in labels]
 
     colors = [
         lc_type.loc[lc_type['Value'] == i]['Color'].values[0] for i in covers
     ]
-
     colors = [mplcols.to_rgb(i) for i in colors]
 
-    fig, ax = plt.subplots(figsize=(12, 6), dpi=120)
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=150)
     ax.set_aspect('equal')
     wedges, texts, autotexts = ax.pie(covers.values(),
                                       colors=colors,

@@ -3,9 +3,11 @@
 *.jp2
 *.png
 *.zip
+*.gif
 
 # data files
 *.csv
+*.qgz
 
 # folders
 *.SAFE/
