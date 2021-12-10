@@ -1,16 +1,18 @@
-import utm
-from sentinelsat import read_geojson, geojson_to_wkt
-import numpy as np
-import os
-import cv2
 import datetime as dt
+import glob
 import itertools
+import os
 import zipfile
-import json
+from collections import Counter
 
-import rasterio
-from rasterio import plot
+import ee
+import matplotlib.colors as mplcols
 import matplotlib.pyplot as plt
+import numpy as np
+import rasterio
+import utm
+from PIL import Image
+from sentinelsat import geojson_to_wkt, read_geojson
 
 
 def get_dataframe_between_dates(api, date1, date2, geojson_path, cloud_threshold=40):
@@ -166,7 +168,7 @@ def download_from_api(api, uuid, title, path='./data/'):
 
 
 def get_band(image_folder, band, resolution):
-    """Returns an image opened with rasterio with the given band and resolution.
+    """Returns an image path for the given band and resolution.
 
     Args:
         image_folder (path): path to the folder containing the image
@@ -217,35 +219,36 @@ def calculate_ndvi(red_band, nir_band):
                         (nir_band - red_band) / (nir_band + red_band))
 
 
-def create_tiff_image(path, when, band1, band2, name, output_folder='output/', resolution=10):
+def create_ndvi_tiff_image(path, when, fire_name, output_folder='output/'):
     """Create the tiff image from the uuid.
         This function creates the tiff image.
         Be mindful of the size of the file.
-
     Args:
         path (string): path to save the tiff file
         when (string): name of the tiff file. Usually 'before' or 'after'
-
     Returns:
         image: opened image with the given uuid
     """
-    image_path_b1 = get_band(path, band1, resolution=resolution)
-    image_path_b2 = get_band(path, band2, resolution=resolution)
+    image_path_b1 = get_band(path, 'B04', resolution=10)
+    image_path_b2 = get_band(path, 'B08', resolution=10)
 
     print("First image selected for NDVI:", image_path_b1.split("/")[-1])
     print("Second image selected for NDVI:", image_path_b2.split("/")[-1])
 
     first_band = rasterio.open(image_path_b1, driver='JP2OpenJPEG')
-    second_band = rasterio.open(image_path_b2, driver='JP2OpenJPEG')
+    # second_band = rasterio.open(image_path_b2, driver='JP2OpenJPEG')
 
-    red = first_band.read(1).astype('float64')
-    nir = second_band.read(1).astype('float64')
+    # red = first_band.read(1).astype('float64')
+    red = open_rasterio(image_path_b1)
+    # nir = second_band.read(1).astype('float64')
+    nir = open_rasterio(image_path_b2)
 
     ndvi = calculate_ndvi(red, nir)
 
     # create the tiff file
+    #pylint: disable=no-member
     ndvi_img = rasterio.open(
-        fp=f'{output_folder}{when}_{name}.tiff',
+        fp=f'{output_folder}{when}_{fire_name}.tiff',
         mode='w', driver='GTiff',
         width=first_band.width,
         height=first_band.height,
@@ -256,13 +259,13 @@ def create_tiff_image(path, when, band1, band2, name, output_folder='output/', r
     )
 
     first_band.close()
-    second_band.close()
+    # second_band.close()
 
     # we only need one band which corresponds to the NDVI
     ndvi_img.write(ndvi, 1)
     ndvi_img.close()
 
-    return rasterio.open(f'{output_folder}{when}_{name}.tiff').read(1)
+    return rasterio.open(f'{output_folder}{when}_{fire_name}.tiff').read(1)
 
 
 def get_image(api, wildfire_date, observation_interval,
@@ -289,7 +292,7 @@ def get_image(api, wildfire_date, observation_interval,
     """
     if when not in ['before', 'after']:
         raise ValueError(
-            f"{when} is not a valid value. It should be 'before' or 'after'"
+            f"{when} is not a valid value. It should be 'before' or 'after'."
         )
 
     if when == 'before':
@@ -320,11 +323,10 @@ def get_image(api, wildfire_date, observation_interval,
     download_from_api(api, uuid, title)
 
     image_folder = path + title + ".SAFE"
-    return create_tiff_image(
-        path=image_folder, when=when, band1=kwargs['band1'],
-        band2=kwargs['band2'], name=kwargs['name'],
-        output_folder=kwargs['output_folder'],
-        resolution=kwargs['resolution']
+    return create_ndvi_tiff_image(
+        path=image_folder, when=when,
+        fire_name=kwargs['fire_name'],
+        output_folder=kwargs['output_folder']
     )
 
 
@@ -423,6 +425,16 @@ def merge_four_images(image_array):
     return final_image
 
 
+def create_sample_coordinates(image, seed, p=0.01):
+    np.random.seed(seed)
+    rand_image = np.zeros_like(image)
+    for i in range(image.shape[0]):
+        for j in range(image.shape[1]):
+            if image[i, j] != 0.:
+                rand_image[i, j] = np.random.choice([1, 0], p=[p, 1 - p])
+    return rand_image
+
+
 def get_tci_file_path(image_folder):
     subfolder = [f for f in os.listdir(
         image_folder + "GRANULE") if f[0] == "L"][0]
@@ -432,3 +444,154 @@ def get_tci_file_path(image_folder):
     selected_file = [im for im in image_files if im.split("_")[2] == "TCI"][0]
 
     return f"{image_folder_path}/{selected_file}"
+
+
+def get_coordinates_from_pixels(img, h, v, img_folder):
+    coords = []
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            if img[i, j] != 0.:
+                coords.append((v + i, h + j))
+
+    #pylint: disable=no-member
+    tci_file_path = get_tci_file_path(img_folder)
+    transform = rasterio.open(tci_file_path, driver='JP2OpenJPEG').transform
+    zone_number = int(tci_file_path.split("/")[-1][1:3])
+    zone_letter = tci_file_path.split("/")[-1][0]
+    utm_x, utm_y = transform[2], transform[5]
+    coords_data = []
+
+    for coord in coords:
+        x, y = coord
+        east = utm_x + x * 10
+        north = utm_y + y * - 10
+        latitude, longitude = utm.to_latlon(
+            east, north, zone_number, zone_letter)
+        coords_data.append((latitude, longitude))
+    return coords_data
+
+
+def get_land_cover_data(coords_data, samples, seed):
+    # Import the MODIS land cover collection.
+    lc = ee.ImageCollection('MODIS/006/MCD12Q1')
+    scale = 1000
+
+    for choose in samples:
+        np.random.seed(seed)
+        cover_data = []
+        random_idxs = np.sort(np.random.choice(
+            range(len(coords_data)), size=choose, replace=False))
+
+        for i in random_idxs:
+            u_lat = coords_data.iloc[i]['latitude']
+            u_lon = coords_data.iloc[i]['longitude']
+            u_poi = ee.Geometry.Point(u_lon, u_lat)
+
+            try:
+                lc_urban_point = lc.first().sample(
+                    u_poi, scale).first().get('land_cover_data1').getInfo()
+                cover_data.append(lc_urban_point)
+            except:
+                print('Error with Earth Engine. Land cover could not be retrieved.')
+
+        if None in cover_data:
+            cover_data = [i for i in cover_data if i]  # remove None values
+        cover_data = dict(Counter(cover_data))
+        cover_data = dict(sorted(cover_data.items(), key=lambda x: x[0]))
+    return cover_data
+
+
+def get_labels_colors(cover_data, land_cover_data):
+    labels = [
+        land_cover_data.loc[
+            land_cover_data['Value'] == i]['Description'].values[0]
+        for i in cover_data
+    ]
+    labels = [i.split(':')[0] for i in labels]
+
+    colors = [
+        land_cover_data.loc[
+            land_cover_data['Value'] == i]['Color'].values[0]
+        for i in cover_data
+    ]
+    colors = [mplcols.to_rgb(i) for i in colors]
+    return labels, colors
+
+
+def plot_pie_chart(cover_data, land_cover_data, output_folder, save_fig=True):
+    """Plots a pie chart with the data and labels.
+
+    Args:
+        data (list): data to be plotted
+        labels (list): labels to be plotted
+        colors (list): colors to be used for the plot
+        output_folder (string): path to the output folder
+        save_fig (bool): whether to save the figure or not. Default is True
+
+    Returns:
+        None
+    """
+    labels, colors = get_labels_colors(cover_data, land_cover_data)
+    choose = len(cover_data)
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=150)
+    ax.set_aspect('equal')
+    wedges, texts, autotexts = ax.pie(cover_data.values(),
+                                      colors=colors,
+                                      autopct='%1.1f%%',
+                                      startangle=90,
+                                      textprops=dict(color='w'))
+    ax.legend(wedges, labels, title='Land Cover Type', loc='best',
+              bbox_to_anchor=(0.9, 0, 0.5, 1),
+              prop={'size': 8},
+              labelspacing=0.3)
+    plt.setp(autotexts, size=6, weight='bold')
+    plt.title(f'N = {choose}')
+    plt.tight_layout()
+    if save_fig:
+        plt.savefig(f'{output_folder}pie_{choose}.png')
+    plt.show()
+
+
+def make_gif(file_path, output_folder, **kwargs):
+    """Makes a gif from the images in the file_path.
+    The images must be in format 'pie_*.png'
+    where '*' is the number of points sampled from the fire.
+
+    Args:
+        file_path (string): path to the folder with the images
+        output_folder (string): path to the output folder.
+            Saves the image to 'output_folder/pie_chart/'
+
+    Returns:
+        None
+    """
+    files = glob.glob(file_path)
+    files = [f.split('_')[2].split('.')[0] for f in files]
+    files = sorted(files, key=int)
+    output = output_folder + 'pie_chart/'
+
+    img, *imgs = [Image.open(f'{output}pie_{f}.png')
+                  for f in files]
+    img.save(fp=output_folder, format='GIF', append_images=imgs, **kwargs)
+
+
+def split_image(image, fragment_count):
+    n = range(fragment_count)
+    frag_size = int(image.shape[0] / fragment_count)
+    split_image = {}
+
+    for y, x in itertools.product(n, n):
+        split_image[(x, y)] = image[y * frag_size: (y + 1) * frag_size,
+                                    x * frag_size: (x + 1) * frag_size]
+    return split_image
+
+
+def plot_split_image(split_image):
+    fragment_count = int(np.sqrt(len(split_image)))
+    n = range(fragment_count)
+    fig, axs = plt.subplots(fragment_count, fragment_count, figsize=(10, 10))
+    for y, x in itertools.product(n, n):
+        axs[y, x].imshow(split_image[(x, y)])
+        axs[y, x].axis('off')
+    plt.tight_layout()
+    plt.show()

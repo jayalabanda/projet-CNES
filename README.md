@@ -11,5 +11,5 @@ To-do list:
 - create gradient map? or exploit the data somehow
 
 - [ ] find new API for land cover and wind information
-- [ ] integrate new scripts ([make_gif](make_gif.py) and [test_plot](test_plot.py)) into [utils.py](utils) and [earth_engine](earth_engine.ipynb) respectively
+- [ ] continue working on [main.py](main.py) to turn the notebooks into a script
 - [ ] make the process as automatic as possible
