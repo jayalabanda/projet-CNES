@@ -2,12 +2,13 @@
 *.tiff
 *.jp2
 *.png
-*.zip
 *.gif
 
 # data files
 *.csv
 *.qgz
+*.zip
+*.json
 
 # folders
 *.SAFE/

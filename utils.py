@@ -15,6 +15,13 @@ from PIL import Image
 from sentinelsat import geojson_to_wkt, read_geojson
 
 
+def imshow(img, title, **kwargs):
+    plt.figure(figsize=(10, 10))
+    plt.imshow(img, **kwargs)
+    plt.title(title)
+    plt.show()
+
+
 def get_dataframe_between_dates(api, date1, date2, geojson_path, cloud_threshold=40):
     """Retrieve a dataframe containing all the information between two dates.
 
@@ -321,8 +328,8 @@ def get_image(api, wildfire_date, observation_interval,
     df = minimize_dataframe(df)
     uuid, title = get_uuid_title(df)
     download_from_api(api, uuid, title)
-
     image_folder = path + title + ".SAFE"
+
     return create_ndvi_tiff_image(
         path=image_folder, when=when,
         fire_name=kwargs['fire_name'],
@@ -398,6 +405,10 @@ def calculate_area(sub_image, original_image, resolution=10):
     return count / sub_image.size * sub_image_area
 
 
+def merge_two_images(images):
+    return np.concatenate((images[0], images[1]), axis=1)
+
+
 def merge_four_images(image_array):
     """
     Takes 4 images of SAME SIZE, merges them together to get a lager field of view
@@ -423,6 +434,19 @@ def merge_four_images(image_array):
     final_image[:n, m:] = image3
     final_image[n:, m:] = image4
     return final_image
+
+
+def merge_images(n_images, images):
+    if n_images != len(images):
+        raise ValueError(
+            "Number of images must be equal to the length of the image array.")
+
+    if n_images == 2:
+        return merge_two_images(images)
+    elif n_images == 4:
+        return merge_four_images(images)
+    else:
+        raise ValueError("Number of images must be 2 or 4.")
 
 
 def create_sample_coordinates(image, seed, p=0.01):
@@ -586,8 +610,7 @@ def split_image(image, fragment_count):
     return split_image
 
 
-def plot_split_image(split_image):
-    fragment_count = int(np.sqrt(len(split_image)))
+def plot_split_image(split_image, fragment_count):
     n = range(fragment_count)
     fig, axs = plt.subplots(fragment_count, fragment_count, figsize=(10, 10))
     for y, x in itertools.product(n, n):
