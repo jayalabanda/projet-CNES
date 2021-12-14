@@ -1,10 +1,10 @@
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-# pylint: disable=no-name-in-module
 from scipy.spatial import ConvexHull
 
-with open('data/weather_api.json') as data_file:
+weather_data_path = "../data/weather_api.json"
+with open(weather_data_path) as data_file:
     data = json.load(data_file)
 
 theta = []
