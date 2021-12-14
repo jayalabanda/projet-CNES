@@ -6,10 +6,8 @@ The main goal is to create an "impact map" containing information about wildfire
 
 To-do list:
 
-- [X] get wind directions with dates
-
-- create gradient map? or exploit the data somehow
-
-- [ ] find new API for land cover and wind information
-- [ ] continue working on [main.py](main.py) to turn the notebooks into a script
+- [ ] (optional) find new API for land cover and wind information
+- [ ] create convex hull figures from fire coordinates
+- [ ] continue working on [main.py](main.py) to turn the notebooks into ~~a script~~ scripts
+- [ ] clean and test new scripts inside [utils](utils/) folder
 - [ ] make the process as automatic as possible

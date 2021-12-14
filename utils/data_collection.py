@@ -1,18 +1,11 @@
 import datetime as dt
-import glob
-import itertools
 import os
 import zipfile
-from collections import Counter
 
-import ee
-import matplotlib.colors as mplcols
-import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
-import utm
-from PIL import Image
 from sentinelsat import geojson_to_wkt, read_geojson
+
 
 def get_band(image_folder, band, resolution):
     """Returns an image path for the given band and resolution.
@@ -61,6 +54,7 @@ def get_dataframe_between_dates(api, date1, date2, geojson_path, cloud_threshold
     print("Retrieved dataframe.\n")
     print(f"Number of images between {date1} and {date2}: {len(images_df)}")
     return images_df
+
 
 def minimize_dataframe(df):
     """Creates a score for the dataframe using a weighted average of
@@ -183,7 +177,90 @@ def download_from_api(api, uuid, title, path='./data/'):
             zip_ref.extractall(path)
         print("Deleting zip file.")
         os.remove(path_to_zip)
-        
+
+
+def open_rasterio(image_path):
+    """Opens the image with rasterio.
+
+    Args:
+        image_path (string): path to the tiff image
+
+    Returns:
+        img: image opened with rasterio
+    """
+    with rasterio.open(image_path, driver='JP2OpenJPEG') as infile:
+        img = infile.read(1).astype('float64')
+    return img
+
+
+def calculate_ndvi(red_band, nir_band):
+    """Calculates the NDVI of a given image.
+
+    Args:
+        red_band (array): red band of the image
+        nir_band (array): nir band of the image
+
+    Returns:
+        ndvi: NDVI of the image
+    """
+    # ignore warnings for this block of code
+    with np.errstate(divide='ignore', invalid='ignore'):
+        return np.where(nir_band + red_band == 0.,
+                        0.,
+                        (nir_band - red_band) / (nir_band + red_band))
+
+
+def create_ndvi_tiff_image(path, when, fire_name, output_folder='output/'):
+    """Create the tiff image from the uuid.
+        This function creates the tiff image.
+        Be mindful of the size of the file.
+
+    Args:
+        path (string): path to save the tiff file
+        when (string): name of the tiff file. Usually 'before' or 'after'
+
+    Returns:
+        image: opened image with the given uuid
+    """
+    image_path_b1 = get_band(path, 'B04', resolution=10)
+    image_path_b2 = get_band(path, 'B08', resolution=10)
+
+    print("First image selected for NDVI:", image_path_b1.split("/")[-1])
+    print("Second image selected for NDVI:", image_path_b2.split("/")[-1])
+
+    temp_band = rasterio.open(image_path_b1, driver='JP2OpenJPEG')
+    # second_band = rasterio.open(image_path_b2, driver='JP2OpenJPEG')
+
+    # red = first_band.read(1).astype('float64')
+    red = open_rasterio(image_path_b1)
+    # nir = second_band.read(1).astype('float64')
+    nir = open_rasterio(image_path_b2)
+
+    ndvi = calculate_ndvi(red, nir)
+
+    # create the tiff file
+    #pylint: disable=no-member
+    output_path = f'{output_folder}{when}_{fire_name}.tiff'
+    ndvi_img = rasterio.open(
+        fp=output_path,
+        mode='w', driver='GTiff',
+        width=temp_band.width,
+        height=temp_band.height,
+        count=1,
+        crs=temp_band.crs,
+        transform=temp_band.transform,
+        dtype='float64'
+    )
+
+    temp_band.close()
+    # second_band.close()
+
+    # we only need one band which corresponds to the NDVI
+    ndvi_img.write(ndvi, 1)
+    ndvi_img.close()
+
+    return rasterio.open(output_path).read(1)
+
 
 def get_image(api, wildfire_date, observation_interval,
               path, when=None, **kwargs):
@@ -245,7 +322,8 @@ def get_image(api, wildfire_date, observation_interval,
         fire_name=kwargs['fire_name'],
         output_folder=kwargs['output_folder']
     )
-    
+
+
 def get_before_after_images(**kwargs):
     """Returns the images before and after the wildfire date.
     Multiple keyword arguments are required that ares passed
@@ -279,23 +357,3 @@ def get_before_after_images(**kwargs):
     print("Created image from after the fire.\n")
 
     return before_image, after_image
-
-
-def get_tci_file_path(image_folder):
-    """Get the path to the tci file.
-       Gives more context and information on the selected zone.
-
-    Args:
-        image_folder (path): path to the image folder
-
-    Returns:
-        path: path of the tci file
-    """
-    subfolder = [f for f in os.listdir(
-        image_folder + "GRANULE") if f[0] == "L"][0]
-    image_folder_path = f"{image_folder}GRANULE/{subfolder}/IMG_DATA/R10m"
-    image_files = [im for im in os.listdir(
-        image_folder_path) if im[-4:] == ".jp2"]
-    selected_file = [im for im in image_files if im.split("_")[2] == "TCI"][0]
-    path = f"{image_folder_path}/{selected_file}"
-    return path
