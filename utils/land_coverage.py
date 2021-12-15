@@ -167,8 +167,8 @@ def get_labels_colors(cover_data, land_cover_data):
     return labels, colors
 
 
-def plot_pie_chart(cover_data, labels, colors, size,
-                   output_folder='output/pie_chart/', save_fig=True):
+def plot_pie_chart(cover_data, labels, colors, size, fire_name,
+                   out_folder=None, save_fig=True):
     """Plots a pie chart with the data and labels.
 
     Args:
@@ -193,20 +193,34 @@ def plot_pie_chart(cover_data, labels, colors, size,
     plt.title(f'N = {size}')
     plt.tight_layout()
     if save_fig:
-        plt.savefig(f'{output_folder}pie_{size}.png')
+        if out_folder is None:
+            out_folder = 'output/pie_chart_' + fire_name + '/'
+        plt.savefig(f'{out_folder}pie_{size}.png')
     plt.show()
 
 
 def create_plots(samples, coordinates, seed, land_cover_data, **kwargs):
+    """Creates the plots for the given samples.
+
+    Args:
+        samples (list): list of samples to be drawn
+        coordinates (dataframe): dataframe of coordinates
+        seed (int): random seed
+        land_cover_data (dataframe): dataframe with the colors and labels by type of land coverage
+        **kwargs: arguments for the plot function
+    """
     for size in samples:
-        labels, colors = get_labels_colors(cover_data, land_cover_data)
+        print(f'Retrieving {samples}')
         cover_data = get_land_cover_data(coordinates, size, seed)
+        print(cover_data)
+        labels, colors = get_labels_colors(cover_data, land_cover_data)
         plot_pie_chart(cover_data, labels, colors, size,
-                       output_folder=kwargs['output_folder'],
+                       fire_name=kwargs['fire_name'],
+                       out_folder=kwargs['out_folder'],
                        save_fig=kwargs['save_fig'])
 
 
-def make_pie_chart_gif(file_path, output_folder, **kwargs):
+def make_pie_chart_gif(fire_name, file_path=None, **kwargs):
     """Makes a gif from the images in the file_path.
     The filenames must be in format 'pie_*.png'
     where '*' is the number of points sampled from the fire.
@@ -215,13 +229,15 @@ def make_pie_chart_gif(file_path, output_folder, **kwargs):
     Args:
         file_path (string): path to the folder with the images
         output_folder (string): path to the output folder.
-            By default, saves the image to 'output/pie_chart/'
     """
-    files = glob.glob(file_path)
-    files = [f.split('_')[2].split('.')[0] for f in files]
-    files = sorted(files, key=int)
-    output = output_folder + 'pie_chart/'
+    if file_path is None:
+        file_path = 'output/pie_chart_' + fire_name + '/'
 
-    img, *imgs = [Image.open(f'{output}pie_{f}.png')
+    files = glob.glob(file_path + 'pie_*.png')
+    files = [f.split('_')[-1].split('.')[0] for f in files]
+    files = sorted(files, key=int)
+    out_file = file_path + fire_name + '.gif'
+
+    img, *imgs = [Image.open(f'{file_path}pie_{f}.png')
                   for f in files]
-    img.save(fp=output_folder, format='GIF', append_images=imgs, **kwargs)
+    img.save(fp=out_file, format='GIF', append_images=imgs, **kwargs)

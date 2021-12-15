@@ -1,7 +1,7 @@
 import itertools
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def split_image(image, fragment_count):
@@ -156,4 +156,17 @@ def imshow(img, title, **kwargs):
     plt.figure(figsize=(10, 10))
     plt.imshow(img, **kwargs)
     plt.title(title)
+    plt.show()
+
+
+def plot_comparison(original, filtered, filter_name):
+    _, (ax1, ax2) = plt.subplots(
+        ncols=2, figsize=(12, 8), sharex=True, sharey=True)
+    ax1.imshow(original)
+    ax1.set_title('Original')
+    ax1.axis('off')
+    ax2.imshow(filtered)
+    ax2.set_title(filter_name)
+    ax2.axis('off')
+    plt.tight_layout()
     plt.show()
