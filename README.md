@@ -9,5 +9,6 @@ To-do list:
 - [ ] (optional) find new API for land cover and wind information
 - [ ] create convex hull figures from fire coordinates
 - [ ] continue working on [main.py](main.py) to turn the notebooks into ~~a script~~ scripts
-- [ ] clean and test new scripts inside [utils](utils/) folder
+- [x] clean and test new scripts inside [utils](utils/) folder
+- [ ] test all functions with a new fire
 - [ ] make the process as automatic as possible
