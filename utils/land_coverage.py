@@ -12,8 +12,9 @@ from PIL import Image
 
 
 def get_tci_file_path(image_folder):
-    """Get the path to the tci file.
-       Gives more context and information on the selected zone.
+    """Get the path to the True Color Image (TCI) file.
+
+    Gives more context and information on the selected zone.
 
     Args:
         image_folder (path): path to the image folder
@@ -30,14 +31,16 @@ def get_tci_file_path(image_folder):
     return f"{image_folder_path}/{selected_file}"
 
 
-def create_sample_coordinates(image, seed, p=0.01):
+def create_sample_coordinates(image, seed=None, p=0.01):
     """Creates a sample of coordinates from the image.
-       The number of points equals n * m * p where n
-       is the number of rows and m is the number of columns.
+
+    The number of points equals approximately `n * m * p` where `n`
+    is the number of rows, `m` is the number of columns, and `p` is
+    the percentage of points to be selected.
 
     Args:
         image (image): image from which the coordinates are sampled
-        seed (int): seed for the random number generator
+        seed (int, optional): seed for the random number generator. Defaults to `None`.
         p (float, optional): Sampling rate. Defaults to 0.01.
 
     Returns:
@@ -53,7 +56,7 @@ def create_sample_coordinates(image, seed, p=0.01):
 
 
 def get_coordinates_from_pixels(img, h, v, img_folder):
-    """Retreives the coordinates from the pixels.
+    """Retreives the latitude and longitude coordinates from the pixels.
 
      Args:
          img (image): image from which the coordinates are retrieved
@@ -61,15 +64,14 @@ def get_coordinates_from_pixels(img, h, v, img_folder):
          img_folder (string): path to the folder where the image is retrieved from
 
      Returns:
-         coordinates: list of coordinates
+         coordinates: list of coordinate tuples (latitude, longitude)
      """
     coords = []
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
             if img[i, j] != 0.:
-                coords.append((v + i, h + j))
+                coords.append((v + j, h + i))
 
-    #pylint: disable=no-member
     tci_file_path = get_tci_file_path(img_folder)
     transform = rasterio.open(tci_file_path, driver='JP2OpenJPEG').transform
     zone_number = int(tci_file_path.split("/")[-1][1:3])
@@ -112,6 +114,18 @@ def select_land_cover_data():
 
 
 def get_land_cover_data(coords_data, size, seed=None):
+    """Retrieves the land cover data from the coordinates.
+
+    The keys in the dictionary are the labels and the values are the
+    number of points in each land cover type.
+
+    Args:
+        coords_data (list): list of coordinate tuples (latitude, longitude)
+        size (int): number of points to be sampled from the fire
+        seed (int, optional): seed for the random number generator. Defaults to `None`.
+
+    Returns:
+        cover_data (dict): dictionary with the land cover data"""
     # Import the MODIS land cover collection.
     lc = ee.ImageCollection('MODIS/006/MCD12Q1')
     scale = 1000
@@ -127,6 +141,7 @@ def get_land_cover_data(coords_data, size, seed=None):
         u_poi = ee.Geometry.Point(u_lon, u_lat)
 
         try:
+            # access the earth engine API
             lc_urban_point = lc.first().sample(
                 u_poi, scale).first().get('LC_Type1').getInfo()
             cover_data.append(lc_urban_point)
@@ -135,13 +150,17 @@ def get_land_cover_data(coords_data, size, seed=None):
 
     if None in cover_data:
         cover_data = [i for i in cover_data if i]  # remove None values
+
     cover_data = dict(Counter(cover_data))
+    # sort by keys so that the output plots have the same structure
     cover_data = dict(sorted(cover_data.items(), key=lambda x: x[0]))
     return cover_data
 
 
 def get_labels_colors(cover_data, land_cover_data):
     """Retrieves the labels and colors for the pie chart.
+
+    The land cover data is a dataframe with columns `Value`, `Color`, and `Description`.
 
     Args:
         cover_data (dict): dictionary with the land cover data
@@ -156,6 +175,7 @@ def get_labels_colors(cover_data, land_cover_data):
             land_cover_data['Value'] == i]['Description'].values[0]
         for i in cover_data
     ]
+    # The text after ':' in the description gives more detals but is not needed
     labels = [i.split(':')[0] for i in labels]
 
     colors = [
@@ -169,26 +189,33 @@ def get_labels_colors(cover_data, land_cover_data):
 
 def plot_pie_chart(cover_data, labels, colors, size, fire_name,
                    out_folder=None, save_fig=True):
-    """Plots a pie chart with the data and labels.
+    """Plots a pie chart with the given data and labels.
 
     Args:
         data (list): data to be plotted
         labels (list): labels to be plotted
         colors (list): colors to be used for the plot
         output_folder (string): path to the output folder
-        save_fig (bool): whether to save the figure or not. Default is True
+        save_fig (bool): whether to save the figure or not. Default is `True`
     """
     _, ax = plt.subplots(figsize=(12, 6), dpi=150)
     ax.set_aspect('equal')
-    wedges, _, autotexts = ax.pie(cover_data.values(),
-                                  colors=colors,
-                                  autopct='%1.1f%%',
-                                  startangle=90,
-                                  textprops=dict(color='w'))
-    ax.legend(wedges, labels, title='Land Cover Type', loc='best',
-              bbox_to_anchor=(0.9, 0, 0.5, 1),
-              prop={'size': 8},
-              labelspacing=0.3)
+    wedges, _, autotexts = ax.pie(
+        cover_data.values(),
+        colors=colors,
+        autopct='%1.1f%%',
+        startangle=90,
+        textprops=dict(color='w')
+    )
+    ax.legend(
+        wedges,
+        labels,
+        title='Land Cover Type',
+        loc='best',
+        bbox_to_anchor=(0.9, 0, 0.5, 1),
+        prop={'size': 8},
+        labelspacing=0.3
+    )
     plt.setp(autotexts, size=6, weight='bold')
     plt.title(f'N = {size}')
     plt.tight_layout()
@@ -199,18 +226,18 @@ def plot_pie_chart(cover_data, labels, colors, size, fire_name,
     plt.show()
 
 
-def create_plots(samples, coordinates, seed, land_cover_data, **kwargs):
+def create_plots(samples, coordinates, land_cover_data, seed=None, **kwargs):
     """Creates the plots for the given samples.
 
     Args:
         samples (list): list of samples to be drawn
         coordinates (dataframe): dataframe of coordinates
-        seed (int): random seed
-        land_cover_data (dataframe): dataframe with the colors and labels by type of land coverage
-        **kwargs: arguments for the plot function
+        land_cover_data (dataframe): dataframe with colors and descriptions of land coverage
+        seed (int): seed for the random number generator. Defaults to `None`.
+        **kwargs: keyword arguments for the `plot_pie_chart` function
     """
     for size in samples:
-        print(f'Retrieving {samples}')
+        print(f'Retrieving {size} samples...')
         cover_data = get_land_cover_data(coordinates, size, seed)
         print(cover_data)
         labels, colors = get_labels_colors(cover_data, land_cover_data)
@@ -222,9 +249,11 @@ def create_plots(samples, coordinates, seed, land_cover_data, **kwargs):
 
 def make_pie_chart_gif(fire_name, file_path=None, **kwargs):
     """Makes a gif from the images in the file_path.
+
     The filenames must be in format 'pie_*.png'
     where '*' is the number of points sampled from the fire.
-    This assumes the PNG files are saved using the 'save_fig' parameter.
+
+    This assumes the PNG files are saved using the `save_fig` parameter.
 
     Args:
         file_path (string): path to the folder with the images

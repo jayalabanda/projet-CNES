@@ -1,6 +1,6 @@
-import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 
 fire = cv2.imread('../output/fire_var.png')
 
