@@ -22,12 +22,13 @@ def get_tci_file_path(image_folder):
     Returns:
         path: path of the tci file
     """
-    subfolder = [f for f in os.listdir(
-        image_folder + "GRANULE") if f[0] == "L"][0]
+    subfolder = [f for f in os.listdir(image_folder + "GRANULE")
+                 if f[0] == "L"][0]
     image_folder_path = f"{image_folder}GRANULE/{subfolder}/IMG_DATA/R10m"
-    image_files = [im for im in os.listdir(
-        image_folder_path) if im[-4:] == ".jp2"]
-    selected_file = [im for im in image_files if im.split("_")[2] == "TCI"][0]
+    image_files = [im for im in os.listdir(image_folder_path)
+                   if im[-4:] == ".jp2"]
+    selected_file = [im for im in image_files
+                     if im.split("_")[2] == "TCI"][0]
     return f"{image_folder_path}/{selected_file}"
 
 
@@ -122,10 +123,11 @@ def get_land_cover_data(coords_data, size, seed=None):
     Args:
         coords_data (list): list of coordinate tuples (latitude, longitude)
         size (int): number of points to be sampled from the fire
-        seed (int, optional): seed for the random number generator. Defaults to `None`.
+        seed (int, optional): seed for the random number generator. Defaults to `None`
 
     Returns:
-        cover_data (dict): dictionary with the land cover data"""
+        cover_data (dict): dictionary with the land cover data
+    """
     # Import the MODIS land cover collection.
     lc = ee.ImageCollection('MODIS/006/MCD12Q1')
     scale = 1000
@@ -222,6 +224,8 @@ def plot_pie_chart(cover_data, labels, colors, size, fire_name,
     if save_fig:
         if out_folder is None:
             out_folder = 'output/pie_chart_' + fire_name + '/'
+        if not os.path.exists(out_folder):
+            os.makedirs(out_folder)
         plt.savefig(f'{out_folder}pie_{size}.png')
     plt.show()
 
@@ -233,7 +237,7 @@ def create_plots(samples, coordinates, land_cover_data, seed=None, **kwargs):
         samples (list): list of samples to be drawn
         coordinates (dataframe): dataframe of coordinates
         land_cover_data (dataframe): dataframe with colors and descriptions of land coverage
-        seed (int): seed for the random number generator. Defaults to `None`.
+        seed (int): seed for the random number generator. Defaults to `None`
         **kwargs: keyword arguments for the `plot_pie_chart` function
     """
     for size in samples:
@@ -241,23 +245,28 @@ def create_plots(samples, coordinates, land_cover_data, seed=None, **kwargs):
         cover_data = get_land_cover_data(coordinates, size, seed)
         print(cover_data)
         labels, colors = get_labels_colors(cover_data, land_cover_data)
-        plot_pie_chart(cover_data, labels, colors, size,
-                       fire_name=kwargs['fire_name'],
-                       out_folder=kwargs['out_folder'],
-                       save_fig=kwargs['save_fig'])
+        plot_pie_chart(
+            cover_data=cover_data,
+            labels=labels,
+            colors=colors,
+            size=size,
+            fire_name=kwargs['fire_name'],
+            out_folder=kwargs['out_folder'],
+            save_fig=kwargs['save_fig']
+        )
 
 
 def make_pie_chart_gif(fire_name, file_path=None, **kwargs):
-    """Makes a gif from the images in the file_path.
+    """Makes a gif from the PNG images in the file_path.
 
     The filenames must be in format 'pie_*.png'
-    where '*' is the number of points sampled from the fire.
+    where '*' is the number of points sampled from the fire using the `create_plots` function.
 
-    This assumes the PNG files are saved using the `save_fig` parameter.
+    This assumes that the PNG files are saved using the `save_fig` parameter.
 
     Args:
         file_path (string): path to the folder with the images
-        output_folder (string): path to the output folder.
+        output_folder (string): path to the output folder
     """
     if file_path is None:
         file_path = 'output/pie_chart_' + fire_name + '/'

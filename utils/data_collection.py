@@ -23,8 +23,8 @@ def get_band(image_folder, band, resolution):
     Returns:
         path to the JP2 image (str)
     """
-    subfolder = [f for f in os.listdir(
-        image_folder + "/GRANULE/") if f[0] == "L"][0]
+    subfolder = [f for f in os.listdir(image_folder + "/GRANULE/")
+                 if f[0] == "L"][0]
     image_folder_path = f"{image_folder}/GRANULE/{subfolder}/IMG_DATA/R{resolution}m"
     image_files = [im for im in os.listdir(image_folder_path)
                    if im[-4:] == ".jp2"]
@@ -167,6 +167,8 @@ def download_from_api(api, uuid, title, path='./data/'):
         title (string): title of the image (named column in the dataframe)
         path (string): path to save the image. Defaults to '`./data/'`
     """
+    if not os.path.exists(path):
+        os.makedirs(path)
     dirs = os.listdir(path)
     dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
 
@@ -254,6 +256,9 @@ def create_ndvi_tiff_image(path, when, fire_name, output_folder='output/'):
     ndvi = calculate_ndvi(red, nir)
 
     # create the tiff file
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
     output_path = f'{output_folder}{when}_{fire_name}.tiff'
     ndvi_img = rasterio.open(
         fp=output_path,
@@ -337,6 +342,7 @@ def get_image(api, wildfire_date, observation_interval,
 
 def get_before_after_images(**kwargs):
     """Returns the images before and after the wildfire date.
+
     Multiple keyword arguments are required that are passed
     to the `'get_image'` function.
 
