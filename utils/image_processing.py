@@ -21,6 +21,23 @@ def imshow(img, title=None, **kwargs):
         plt.title(title)
 
 
+def plot_downloaded_images(fire_name, output_folder):
+    before = rasterio.open(
+        f"{output_folder}before_{fire_name}.tiff", driver='GTiff').read(1)
+    after = rasterio.open(
+        f"{output_folder}after_{fire_name}.tiff", driver='GTiff').read(1)
+
+    _, axs = plt.subplots(1, 2, figsize=(10, 10))
+    axs[0].imshow(before)
+    axs[0].set_title("NDVI Before")
+    axs[0].axis('off')
+    axs[1].imshow(after)
+    axs[1].set_title("NDVI After")
+    axs[1].axis('off')
+    plt.tight_layout()
+    plt.show()
+
+
 def get_fire_pixels(image_folder, latitude, longitude):
     """Using the coordinates of the wildifre,
     return the pixel row and column inside the 'NDVI difference' image.
@@ -149,7 +166,8 @@ def merge_four_images(image_array):
 def merge_images(n_images, images, horizontal=True):
     """Merge 2 or 4 images together.
 
-    If `n_images` is 2, the images are merged horizontally or vertically.
+    If `n_images` is 2, the images are merged horizontally or vertically
+    depending on the value of `horizontal`.
 
     If `n_images` is 4, the images are merged in a 2x2 grid.
 
@@ -186,13 +204,13 @@ def plot_comparison(original, filtered, filter_name):
         filtered (image): filtered image
         filter_name (str): name of the filter
     """
-    _, (ax1, ax2) = plt.subplots(
+    _, axs = plt.subplots(
         ncols=2, figsize=(12, 8), sharex=True, sharey=True)
-    ax1.imshow(original)
-    ax1.set_title('Original')
-    ax1.axis('off')
-    ax2.imshow(filtered)
-    ax2.set_title(filter_name)
-    ax2.axis('off')
+    axs[0].imshow(original)
+    axs[0].set_title('Original')
+    axs[0].axis('off')
+    axs[1].imshow(filtered)
+    axs[1].set_title(filter_name)
+    axs[1].axis('off')
     plt.tight_layout()
     plt.show()

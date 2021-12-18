@@ -194,10 +194,10 @@ def download_from_api(api, uuid, title, path='./data/'):
 
 
 def open_rasterio(image_path):
-    """Opens the image with rasterio.
+    """Opens the given image with rasterio.
 
     Args:
-        image_path (string): path to the tiff image
+        image_path (string): path to the JP2 image
 
     Returns:
         img: image opened with rasterio
@@ -229,72 +229,66 @@ def calculate_ndvi(red_band, nir_band):
 
 
 def create_ndvi_tiff_image(path, when, fire_name, output_folder='output/'):
-    """Create the tiff image from the uuid.
+    """Create the TIFF image from the uuid.
 
-    This function creates the tiff image. Be mindful of the size of the file.
+    This function creates the TIFF image. Be mindful of the size of the file.
 
     Args:
-        path (string): path to save the tiff file
-        when (string): name of the tiff file. It defaults to `'before'` or `'after'`
+        path (string): path to save the TIFF file
+        when (string): name of the TIFF file. It defaults to `'before'` or `'after'`
             according to the date retrieved from the API
         fire_name (string): name of the fire
-        output_folder (string): path to save the tiff file. Defaults to `'output/'`
+        output_folder (string): path to save the TIFF file. Defaults to `'output/'`
 
     Returns:
         image: opened image with the given uuid
     """
-    image_path_b1 = get_band(path, 'B04', resolution=10)
-    image_path_b2 = get_band(path, 'B08', resolution=10)
-
-    print("First image selected for NDVI:", image_path_b1.split("/")[-1])
-    print("Second image selected for NDVI:", image_path_b2.split("/")[-1])
-
-    temp_band = rasterio.open(image_path_b1, driver='JP2OpenJPEG')
-
-    red = open_rasterio(image_path_b1)
-    nir = open_rasterio(image_path_b2)
-    ndvi = calculate_ndvi(red, nir)
-
-    # create the tiff file
+    # Check if output_folder already contains TIFF files
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    output_path = f'{output_folder}{when}_{fire_name}.tiff'
-    ndvi_img = rasterio.open(
-        fp=output_path,
-        mode='w', driver='GTiff',
-        width=temp_band.width,
-        height=temp_band.height,
-        count=1,
-        crs=temp_band.crs,
-        transform=temp_band.transform,
-        dtype='float64'
-    )
-    temp_band.close()
+    output_file = f'{output_folder}{when}_{fire_name}.tiff'
+    if os.path.exists(output_file):
+        print("TIFF file already exists.")
+        return
 
-    # we only need one band which corresponds to the NDVI
-    ndvi_img.write(ndvi, 1)
-    ndvi_img.close()
+    image_path_b4 = get_band(path, 'B04', resolution=10)
+    image_path_b8 = get_band(path, 'B08', resolution=10)
+    temp_band = rasterio.open(image_path_b4, driver='JP2OpenJPEG')
+
+    red = open_rasterio(image_path_b4)
+    nir = open_rasterio(image_path_b8)
+    ndvi = calculate_ndvi(red, nir)
+
+    # create the TIFF file
+    with rasterio.open(fp=output_file,
+                       mode='w', driver='GTiff',
+                       width=temp_band.width,
+                       height=temp_band.height,
+                       count=1,
+                       crs=temp_band.crs,
+                       transform=temp_band.transform,
+                       dtype='float64') as ndvi_img:
+        # we only need one band which corresponds to the NDVI
+        ndvi_img.write(ndvi, 1)
+    temp_band.close()
 
 
 def get_image(api, wildfire_date, observation_interval,
               path, when=None, **kwargs):
-    """Get the image from the API and create the tiff file.
+    """Get the image from the API and create the TIFF file.
 
     Args:
         api (SentinelAPI): API object
         wildfire_date (string): date of the wildfire
         observation_interval (int): interval of observation in days
         path (string): path to save the image. Defaults to `'./data/'`
-        when (string): name of the tiff file, either `'before'` or `'after'`
+        when (string): name of the TIFF file, either `'before'` or `'after'`
         **kwargs: keyword arguments are:
             - geojson_path (string): path to the geojson file
             - cloud_threshold (int): threshold for cloud cover. Defaults to 40.
-            - output_folder (string): path to save the tiff file. Defaults to `'output/'`
-            - fire_name (string): name of the tiff file.
-
-    Returns:
-        opened tiff file
+            - output_folder (string): path to save the TIFF file. Defaults to `'output/'`
+            - fire_name (string): name of the TIFF file.
     """
     if when not in ['before', 'after']:
         raise ValueError(
@@ -304,12 +298,12 @@ def get_image(api, wildfire_date, observation_interval,
     if when == 'before':
         # create dates around the wildfire
         before_date = wildfire_date - dt.timedelta(days=1)
-        before_date_one_week_ago = wildfire_date - \
+        before_date_delta = wildfire_date - \
             dt.timedelta(days=observation_interval)
 
         df = get_dataframe_between_dates(
             api,
-            before_date_one_week_ago,
+            before_date_delta,
             before_date,
             geojson_path=kwargs['geojson_path'],
             cloud_threshold=kwargs['cloud_threshold'],
@@ -329,7 +323,7 @@ def get_image(api, wildfire_date, observation_interval,
 
     df = minimize_dataframe(df)
     uuid, title = get_uuid_title(df)
-    download_from_api(api, uuid, title)
+    download_from_api(api, uuid, title, path)
     image_folder = path + title + ".SAFE"
 
     create_ndvi_tiff_image(
