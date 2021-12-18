@@ -5,6 +5,8 @@ pandas
 
 # plotting libraries
 matplotlib
+seaborn
+folium
 
 # geospatial libraries
 rasterio
@@ -17,7 +19,7 @@ earthengine-api
 # image processing libraries
 opencv
 pillow
-skimage
+scikit-image
 
 # others
 rtree
