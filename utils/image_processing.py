@@ -85,10 +85,10 @@ def retrieve_fire_area(image, pixel_column, pixel_row, title=None, **kwargs):
                 f"Enter the first vertical line. Value must be an integer between 0 and {image.shape[0]}: "))
             vline_2 = int(input(
                 f"Enter the second vertical line. Value must be an integer between {vline_1} and {image.shape[0]}: "))
-            delta_v = vline_2 - vline_1
             hline_1 = int(input(
                 f"Enter the first horizontal line. Value must be an integer between 0 and {image.shape[1]}: "))
-            hline_2 = hline_1 + delta_v
+            hline_2 = int(input(
+                f"Enter the second horizontal line. Value must be an integer between {hline_1} and {image.shape[1]}: "))
 
             plot_fire_area(image,
                            vline_1, vline_2, hline_1, hline_2,
@@ -99,6 +99,7 @@ def retrieve_fire_area(image, pixel_column, pixel_row, title=None, **kwargs):
 
         try:
             sat = input("Are you satisfied with the values? (y/n): ")
+            print("\n")
             if sat == "y":
                 satisfied = True
             else:

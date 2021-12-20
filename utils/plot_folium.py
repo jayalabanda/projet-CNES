@@ -15,7 +15,6 @@ def get_coordinates(fire_name):
 
 def get_location_list(fire_name, p, seed):
     coordinates = get_coordinates(fire_name)
-
     size = int(p * coordinates.shape[0])
     np.random.seed(seed)
     random_idxs = np.random.choice(len(coordinates), size=size, replace=False)
@@ -158,6 +157,19 @@ def add_to_map(map_, dataset, choice):
 
 
 def create_map(fire_name, p, seed):
+    """Create a folium map of the burnt area using `p` percent of the number of coordinates
+    in the fire CSV.
+
+    A Google Satellite and Google Maps layer are added to the map, along with the selected
+    land cover layer used in the `select_land_cover_data` function.
+
+    The map also has a minimap and a layer control option.
+
+    Args:
+        fire_name (str): name of the fire
+        p (float): percentage of coordinates to use in the map
+        seed (int): seed used to generate the sampled coordinates.
+    """
     # Add EE drawing method to folium.
     folium.Map.add_ee_layer = add_ee_layer
 
@@ -194,15 +206,27 @@ def create_map(fire_name, p, seed):
     return my_map
 
 
-def save_map(my_map, fire_name, output_folder):
-    # Save the map
+def save_map(map_, fire_name, output_folder):
+    """Save the map to an HTML file.
+
+    Args:
+        map_ (folium.Map): map to save
+        fire_name (str): name of the fire
+        output_folder (str): folder to save the map to
+    """
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
     filename = f'{output_folder}map_{fire_name}.html'
-    my_map.save(filename)
+    map_.save(filename)
 
 
 def open_map(fire_name, output_folder):
+    """Open the HTML file from the map in a web browser.
+
+    Args:
+        fire_name (str): name of the fire
+        output_folder (str): folder where the HTML file is saved
+    """
     filename = f'{output_folder}map_{fire_name}.html'
     webbrowser.open_new_tab('file://' + os.path.realpath(filename))

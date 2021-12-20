@@ -6,11 +6,13 @@ The main goal is to create an "impact map" containing information about wildfire
 
 To-do list:
 
-- [ ] (optional) find new API for land cover and wind information
+- [ ] (optional) find new API for ~~land cover and~~ wind information
+- [ ] try other land cover data with `earth-engine`
 - [ ] create convex hull figures from fire coordinates
-- [x] continue working on [main.py](main.py) to turn the notebooks into ~~a script~~ scripts
-- [x] clean and test new scripts inside [utils](utils/) folder
+- [ ] continue working on [main.py](main.py)
+- [ ] clean and test new scripts inside [utils](utils/) folder
 - [x] test all functions with a new fire
 - [ ] make the process as automatic as possible
-- [ ] add user input where necessary
-- [ ] add robustness to scripts
+- [x] add user input where necessary
+- [x] add robustness to scripts
+- [ ] start documentation

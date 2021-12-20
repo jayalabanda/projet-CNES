@@ -144,7 +144,7 @@ def get_uuid_title(df):
     title = df.iloc[i]["title"]
 
     print('Retrieved best uuid and title from the dataframe:')
-    print(f"uuid: {uuid}, title: {title}\n")
+    print(f"uuid: {uuid}\ntitle: {title}\n")
 
     key_cols = ["cloudcoverpercentage",
                 "vegetationpercentage",

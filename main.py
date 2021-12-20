@@ -16,17 +16,44 @@ import utils.image_processing as ip
 import utils.land_coverage as lc
 import utils.plot_folium as pf
 
+###############################################################################
+# SETUP
+###############################################################################
 
-authenticated = input("Authenticate with Earth Engine? (y/n): ")
-if authenticated == "y":
-    ee.Authenticate()
-elif authenticated != "n":
-    print("Please enter 'y' or 'n'.")
-    raise ValueError("Please enter 'y' or 'n'.")
+while True:
+    try:
+        authenticated = input("Authenticate with Earth Engine? (y/n): ")
+        if authenticated == "y":
+            ee.Authenticate()
+            break
+        elif authenticated == "n":
+            break
+        else:
+            raise ValueError("Invalid input")
+    except ValueError:
+        print("Please enter 'y' or 'n'.")
 ee.Initialize()
 
 # Name of the place where the fire is located
-FIRE_NAME = input("Name of the fire: ").lower()
+try:
+    FIRE_NAME = input("Name of the fire: ").lower()
+except ValueError:
+    print("Please enter a valid name.")
+
+# Folder where the JP2 images will be stored
+PATH = f'data/{FIRE_NAME}/'
+# Path to the folders where the TIFF, PNG, and GIF files will be stored
+OUTPUT_FOLDER = f"output/{FIRE_NAME}/"
+
+with open(PATH + f"info_{FIRE_NAME}.json") as f:
+    fire_info = json.load(f)
+
+# Date of the fire
+WILDFIRE_DATE = dt.datetime.strptime(fire_info["wildfire_date"], "%Y-%m-%d")
+# Coordinates of the fire
+LATITUDE, LONGITUDE = fire_info["latitude"], fire_info["longitude"]
+# Actual area in hectares that burned. We retrieved the area on the news
+TRUE_AREA = fire_info["true_area"]
 
 # Path to the GeoJSON file
 GEOJSON_PATH = f"data/geojson_files/{FIRE_NAME}.geojson"
@@ -35,31 +62,21 @@ CREDENTIALS_PATH = "secrets/sentinel_api_credentials.json"
 # Path to the CSV land cover data
 LAND_COVER_DATA = pd.read_csv('data/MODIS_LandCover_Type1.csv')
 
-# Date of the fire
-WILDFIRE_DATE = dt.date(2020, 7, 28)
 # Number of days both before and after the fire to get images
 OBSERVATION_INTERVAL = 15
-# Folder where the JP2 images will be stored
-PATH = f'data/{FIRE_NAME}/'
-# Path to the folder where the TIFF, PNG, and GIF images will be stored
-OUTPUT = 'output/'
-OUTPUT_FOLDER = f"{OUTPUT}{FIRE_NAME}/"
-
 # Resolution of the images (10m, 20m, or 60m)
 RESOLUTION = 10
 # Threshold for the cloud cover (between 0 and 100)
 CLOUD_THRESHOLD = 40
 # Split the image into smaller chunks
 # FRAG_COUNT = 15
-# Coordinates of the fire
-LATITUDE, LONGITUDE = 44.456801, -0.571638
-# Actual area in hectares that burned. We retrieved the area on the news
-TRUE_AREA = 250.0
 # Seed for random number generator (for reproductibility)
 SEED = 42
 
-# Number of coordinates to use for the pie charts
+# Threshold values for calculating the fire area
 THRESHOLDS = np.arange(0.1, 0.41, 0.02)
+# Number of coordinates to use for the pie charts
+SAMPLES = np.arange(50, 1001, 50)
 
 
 ###############################################################################
@@ -92,7 +109,6 @@ try:
     )
 except Exception as e:
     print(e)
-    print("Please try again later.")
     exit()
 
 ip.plot_downloaded_images(FIRE_NAME, OUTPUT_FOLDER)
@@ -167,13 +183,18 @@ print(
     round(ip.calculate_area(fire, diff) * 100, 4), 'ha'
 )
 
-dilated = area_closing(fire)
-ip.plot_comparison(fire, dilated, 'Area Closing')
+closed = area_closing(fire)
+ip.plot_comparison(fire, closed, 'Area Closing')
 
 print(
     'Area after morphology:',
-    round(ip.calculate_area(dilated, diff) * 100, 4), 'ha'
+    round(ip.calculate_area(closed, diff) * 100, 4), 'ha'
 )
+
+
+###############################################################################
+# CLASSIFICATION
+###############################################################################
 
 while True:
     try:
@@ -185,11 +206,6 @@ while True:
             print('Please enter a value between 0 and 100.')
     except ValueError:
         print('Please enter a valid number.')
-
-
-###############################################################################
-# CLASSIFICATION
-###############################################################################
 
 rand_image = lc.create_sample_coordinates(fire, 42, p)
 ip.imshow(rand_image, 'Sampled Coordinates')
@@ -203,14 +219,13 @@ coordinates.to_csv(
     index=False
 )
 
-output_folder = f"{OUTPUT}pie_chart_{FIRE_NAME}/"
+output_folder = f"output/pie_chart_{FIRE_NAME}/"
 exists = os.path.exists(output_folder)
 if not exists:
     os.makedirs(output_folder)
 is_empty = not any(os.scandir(output_folder))
 
 if exists and is_empty or not exists:
-    SAMPLES = np.arange(50, 1001, 50)
     lc.create_plots(
         samples=SAMPLES,
         coordinates=coordinates,
@@ -221,20 +236,30 @@ if exists and is_empty or not exists:
         save_fig=True
     )
 
-    lc.make_pie_chart_gif(
-        fire_name=FIRE_NAME,
-        file_path=output_folder,
-        save_all=True,
-        duration=500,
-        loop=0
-    )
+lc.make_pie_chart_gif(
+    fire_name=FIRE_NAME,
+    file_path=output_folder,
+    save_all=True,
+    duration=500,
+    loop=0
+)
 
 # Create Folium map
-p = float(input('Value between 0 and 100: ')) / 100
+while True:
+    try:
+        p = float(input('Value between 0 and 100: ')) / 100
+        if 0 < p <= 1:
+            break
+        else:
+            raise ValueError
+    except ValueError:
+        print('Please enter a valid number.')
+
 fire_map = pf.create_map(FIRE_NAME, p, SEED)
 
 pf.save_map(fire_map, FIRE_NAME, 'output/maps/')
 pf.open_map(FIRE_NAME, 'output/maps/')
+
 
 ###############################################################################
 # WIND DATA
