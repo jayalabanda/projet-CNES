@@ -175,7 +175,7 @@ def download_from_api(api, uuid, title, path='./data/'):
     # the name of the downloaded file is 'title + .SAFE'
     img_folder = title + '.SAFE'
     if img_folder not in dirs_safe:
-        print("Downloading image from the API.")
+        print("Attempting to download image from the API.")
         api.download(uuid, path)
 
     # check that the zip file has been downloaded

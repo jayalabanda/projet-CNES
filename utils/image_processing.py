@@ -61,6 +61,52 @@ def get_fire_pixels(image_folder, latitude, longitude):
     return pixel_column, pixel_row
 
 
+def retrieve_fire_area(image, title=None, **kwargs):
+    satisfied = False
+    while not satisfied:
+        try:
+            vline_1 = int(input(
+                f"Enter the first vertical line. Value must be an integer between 0 and {image.shape[0]}: "))
+            vline_2 = int(input(
+                f"Enter the second vertical line. Value must be an integer between {vline_1} and {image.shape[0]}: "))
+            delta_v = vline_2 - vline_1
+            hline_1 = int(input(
+                f"Enter the first horizontal line. Value must be an integer between 0 and {image.shape[1]}: "))
+            hline_2 = hline_1 + delta_v
+
+            plt.figure(figsize=(12, 12))
+            imshow(image)
+            plt.vlines(vline_1, ymin=0, ymax=image.shape[0],
+                       color='r', linestyle='dashed', linewidth=1)
+            plt.vlines(vline_2, ymin=0, ymax=image.shape[0],
+                       color='r', linestyle='dashed', linewidth=1)
+            plt.hlines(hline_1, xmin=0, xmax=image.shape[1],
+                       color='r', linestyle='dashed', linewidth=1)
+            plt.hlines(hline_2, xmin=0, xmax=image.shape[1],
+                       color='r', linestyle='dashed', linewidth=1)
+            plt.tight_layout()
+            plt.show()
+
+        except ValueError:
+            print("Invalid value. Try again.")
+
+        try:
+            sat = input("Are you satisfied with the values? (y/n): ")
+            if sat == "y":
+                satisfied = True
+            else:
+                continue
+        except ValueError:
+            print("Invalid value. Try again.")
+
+        fire = image[hline_1:hline_2, vline_1:vline_2]
+        imshow(fire, title, **kwargs)
+        plt.axis('off')
+        plt.show()
+
+    return fire, hline_1, vline_1
+
+
 def split_image(image, fragment_count):
     """Split an image into a grid of equally-sided fragments.
 

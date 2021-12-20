@@ -3,6 +3,7 @@
 *.jp2
 *.png
 *.gif
+*.html
 
 # data files
 *.csv
