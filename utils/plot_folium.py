@@ -7,56 +7,61 @@ import numpy as np
 import pandas as pd
 from folium import plugins
 
-ee.Initialize()
 
-fire_name = 'istres'
-coordinates = pd.read_csv(
-    f'data/coordinates_files/coords_utm_{fire_name}.csv')
-size = int(0.1 * coordinates.shape[0])
+def get_coordinates(fire_name):
+    return pd.read_csv(
+        f'data/coordinates_files/coords_utm_{fire_name}.csv')
 
-np.random.seed(0)
-random_idxs = np.random.choice(len(coordinates), size=size, replace=False)
-random_coords = coordinates.iloc[random_idxs]
-location_list = random_coords.values.tolist()
+
+def get_location_list(fire_name, p, seed):
+    coordinates = get_coordinates(fire_name)
+
+    size = int(p * coordinates.shape[0])
+    np.random.seed(seed)
+    random_idxs = np.random.choice(len(coordinates), size=size, replace=False)
+    random_coords = coordinates.iloc[random_idxs]
+    return random_coords.values.tolist()
+
 
 # Add custom basemaps to folium
-basemaps = {
-    'Google Maps': folium.TileLayer(
-        tiles='https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-        attr='Google',
-        name='Google Maps',
-        overlay=True,
-        control=True
-    ),
-    'Google Satellite': folium.TileLayer(
-        tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-        attr='Google',
-        name='Google Satellite',
-        overlay=True,
-        control=True
-    ),
-    'Google Terrain': folium.TileLayer(
-        tiles='https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
-        attr='Google',
-        name='Google Terrain',
-        overlay=True,
-        control=True
-    ),
-    'Google Satellite Hybrid': folium.TileLayer(
-        tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-        attr='Google',
-        name='Google Satellite',
-        overlay=True,
-        control=True
-    ),
-    'Esri Satellite': folium.TileLayer(
-        tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        attr='Esri',
-        name='Esri Satellite',
-        overlay=True,
-        control=True
-    )
-}
+def create_basemaps():
+    return {
+        'Google Maps': folium.TileLayer(
+            tiles='https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+            attr='Google',
+            name='Google Maps',
+            overlay=True,
+            control=True,
+        ),
+        'Google Satellite': folium.TileLayer(
+            tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+            attr='Google',
+            name='Google Satellite',
+            overlay=True,
+            control=True,
+        ),
+        'Google Terrain': folium.TileLayer(
+            tiles='https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
+            attr='Google',
+            name='Google Terrain',
+            overlay=True,
+            control=True,
+        ),
+        'Google Satellite Hybrid': folium.TileLayer(
+            tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+            attr='Google',
+            name='Google Satellite',
+            overlay=True,
+            control=True,
+        ),
+        'Esri Satellite': folium.TileLayer(
+            tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            attr='Esri',
+            name='Esri Satellite',
+            overlay=True,
+            control=True,
+        ),
+    }
 
 
 # Define a method for displaying Earth Engine image tiles on a folium map.
@@ -104,11 +109,7 @@ def add_ee_layer(self, ee_object, vis_params, name):
             ).add_to(self)
 
     except:
-        print("Could not display {}".format(name))
-
-
-# Add EE drawing method to folium.
-folium.Map.add_ee_layer = add_ee_layer
+        print(f"Could not display {name}.")
 
 
 def select_land_cover_data():
@@ -143,11 +144,10 @@ def add_to_map(map_, dataset, choice):
     if choice == 1:
         map_.add_ee_layer(
             dataset,
-            vis_params={
-                'min': 1.0, 'max': 17.0,
-                'palette': ['05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
-                            'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
-                            '69fff8', 'f9ffa4', '1c0dff']},
+            {'min': 1.0, 'max': 17.0,
+             'palette': ['05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
+                         'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
+                         '69fff8', 'f9ffa4', '1c0dff']},
             name='MODIS Land Cover')
     elif choice == 2:
         map_.add_ee_layer(dataset, {}, 'ESA World Cover')
@@ -157,38 +157,52 @@ def add_to_map(map_, dataset, choice):
         map_.add_ee_layer(dataset, {}, 'Copernicus Corine Land Cover')
 
 
-center = coordinates.mean(axis=0).to_list()
-my_map = folium.Map(location=center, zoom_start=12)
+def create_map(fire_name, p, seed):
+    # Add EE drawing method to folium.
+    folium.Map.add_ee_layer = add_ee_layer
 
-for point in range(len(location_list)):
-    folium.Marker(location_list[point]).add_to(my_map)
+    coordinates = get_coordinates(fire_name)
+    center = coordinates.mean(axis=0).to_list()
+    my_map = folium.Map(location=center, zoom_start=12)
 
-# Add basemaps
-basemaps['Google Maps'].add_to(my_map)
-basemaps['Google Satellite Hybrid'].add_to(my_map)
+    # Add markers
+    location_list = get_location_list(fire_name, p, seed)
+    for point in range(len(location_list)):
+        folium.Circle(location_list[point], radius=40).add_to(my_map)
 
-# Add minimap
-minimap = plugins.MiniMap()
-my_map.add_child(minimap)
+    # Add basemaps
+    basemaps = create_basemaps()
+    basemaps['Google Maps'].add_to(my_map)
+    basemaps['Google Satellite Hybrid'].add_to(my_map)
 
-# Add selected land cover
-dataset, choice = select_land_cover_data()
-add_to_map(my_map, dataset, choice)
+    # Add minimap
+    minimap = plugins.MiniMap()
+    my_map.add_child(minimap)
 
-# Add a layer control panel to the map.
-my_map.add_child(folium.LayerControl())
+    # Add selected land cover
+    dataset, choice = select_land_cover_data()
+    add_to_map(my_map, dataset, choice)
 
-# Add fullscreen button
-plugins.Fullscreen().add_to(my_map)
+    # Add a layer control panel to the map.
+    my_map.add_child(folium.LayerControl())
 
-# Display the map.
-# my_map
+    # Add fullscreen button
+    plugins.Fullscreen().add_to(my_map)
 
-# Save the map
-if not os.path.exists('output/maps/'):
-    os.makedirs('output/maps/')
+    # Display the map.
+    # my_map
+    return my_map
 
-filename = f'output/maps/map_{fire_name}.html'
-my_map.save(filename)
 
-webbrowser.open_new_tab('file://' + os.path.realpath(filename))
+def save_map(my_map, fire_name, output_folder):
+    # Save the map
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    filename = f'{output_folder}map_{fire_name}.html'
+    my_map.save(filename)
+
+
+def open_map(fire_name, output_folder):
+    filename = f'{output_folder}map_{fire_name}.html'
+    webbrowser.open_new_tab('file://' + os.path.realpath(filename))

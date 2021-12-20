@@ -136,16 +136,14 @@ def get_uuid_title(df):
     # large enough, since images with no data are smaller
     i = 0
     size = df["size"].values[i]
-    while size < 1000. and i <= df.shape[0]:
+    while size < 980. and i <= df.shape[0]:
         i += 1
         size = df["size"].values[i]
 
     uuid = df.iloc[i]["uuid"]
     title = df.iloc[i]["title"]
 
-    print(
-        f"Retrieved best uuid and title from the dataframe on row {i + 1}."
-    )
+    print('Retrieved best uuid and title from the dataframe:')
     print(f"uuid: {uuid}, title: {title}\n")
 
     key_cols = ["cloudcoverpercentage",
@@ -177,6 +175,8 @@ def download_from_api(api, uuid, title, path='./data/'):
     if img_folder not in dirs_safe:
         print("Attempting to download image from the API.")
         api.download(uuid, path)
+    else:
+        print("Image already downloaded.")
 
     # check that the zip file has been downloaded
     dirs = os.listdir(path)
@@ -184,13 +184,12 @@ def download_from_api(api, uuid, title, path='./data/'):
     if zips:
         # unzip the file with zipfile
         path_to_zip = path + title + ".zip"
-        print("Unzipping file.")
-
         with zipfile.ZipFile(path_to_zip, 'r') as zip_ref:
             zip_ref.extractall(path)
+        print("Unzipped file.")
 
-        print("Deleting zip file.")
         os.remove(path_to_zip)
+        print("Deleted zip file.")
 
 
 def open_rasterio(image_path):
@@ -297,14 +296,15 @@ def get_image(api, wildfire_date, observation_interval,
 
     if when == 'before':
         # create dates around the wildfire
-        before_date = wildfire_date - dt.timedelta(days=1)
+        # before_date = wildfire_date - dt.timedelta(days=1)
         before_date_delta = wildfire_date - \
             dt.timedelta(days=observation_interval)
 
         df = get_dataframe_between_dates(
             api,
             before_date_delta,
-            before_date,
+            # before_date,
+            wildfire_date,
             geojson_path=kwargs['geojson_path'],
             cloud_threshold=kwargs['cloud_threshold'],
         )

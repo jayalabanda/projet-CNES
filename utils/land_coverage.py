@@ -227,7 +227,7 @@ def plot_pie_chart(cover_data, labels, colors, size, fire_name,
         if not os.path.exists(out_folder):
             os.makedirs(out_folder)
         plt.savefig(f'{out_folder}pie_{size}.png')
-    plt.show()
+    # plt.show()
 
 
 def create_plots(samples, coordinates, land_cover_data, seed=None, **kwargs):
@@ -254,6 +254,7 @@ def create_plots(samples, coordinates, land_cover_data, seed=None, **kwargs):
             out_folder=kwargs['out_folder'],
             save_fig=kwargs['save_fig']
         )
+    plt.show()
 
 
 def make_pie_chart_gif(fire_name, file_path=None, **kwargs):
