@@ -169,6 +169,9 @@ def download_from_api(api, uuid, title, path='./data/'):
         os.makedirs(path)
     dirs = os.listdir(path)
     dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
+    if len(dirs_safe) == 2:
+        print("Two SAFE folders already exist.")
+        return
 
     # the name of the downloaded file is 'title + .SAFE'
     img_folder = title + '.SAFE'
@@ -271,6 +274,7 @@ def create_ndvi_tiff_image(path, when, fire_name, output_folder='output/'):
         # we only need one band which corresponds to the NDVI
         ndvi_img.write(ndvi, 1)
     temp_band.close()
+    print(f'Created image from {when} the fire.')
 
 
 def get_image(api, wildfire_date, observation_interval,
@@ -343,12 +347,8 @@ def get_before_after_images(**kwargs):
     Please refer to the `'get_image'` function for more details.
     """
     get_image(when='before', **kwargs)
-    print("Created image from before the fire.\n")
-
     print("-" * 30)
-
     get_image(when='after', **kwargs)
-    print("Created image from after the fire.\n")
 
 
 def plot_ndvi_difference(output_folder, fire_name, figsize=(10, 10)):

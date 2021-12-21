@@ -1,11 +1,13 @@
 import glob
 import os
 from collections import Counter
+import webbrowser
 
 import ee
 import matplotlib.colors as mplcols
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import rasterio
 import utm
 from PIL import Image
@@ -56,8 +58,10 @@ def create_sample_coordinates(image, seed=None, p=0.01):
     return rand_image
 
 
-def get_coordinates_from_pixels(img, h, v, img_folder):
-    """Retreives the latitude and longitude coordinates from the pixels.
+def get_coordinates_from_pixels(img, h, v, img_folder, fire_name):
+    """Retrieves the latitude and longitude coordinates from the pixels.
+
+    Then saves the coordinates in a CSV file.
 
      Args:
          img (image): image from which the coordinates are retrieved
@@ -87,10 +91,17 @@ def get_coordinates_from_pixels(img, h, v, img_folder):
         latitude, longitude = utm.to_latlon(
             east, north, zone_number, zone_letter)
         coordinates.append((latitude, longitude))
+
+    coordinates = pd.DataFrame(coordinates, columns=['latitude', 'longitude'])
+
+    if not os.path.exists('data/coordinates_files/'):
+        os.makedirs('data/coordinates_files/')
+
+    coordinates.to_csv(f'data/coordinates_files/{fire_name}.csv', index=False)
     return coordinates
 
 
-def select_land_cover_data():
+def get_choice():
     while True:
         try:
             print(
@@ -99,22 +110,51 @@ def select_land_cover_data():
                 1. MODIS Land Cover (2018, 500m)
                 2. ESA World Cover (2020, 10m)
                 3. Copernicus Global Land Service (2019, 100m)
-                4. Copernicus Corine Land Cover (2018, 100m)"""
+                4. Copernicus CORINE Land Cover (2018, 100m)"""
             )
-            choice = int(input('Select land cover data: '))
-            if choice == 1:
-                return ee.ImageCollection('MODIS/006/MCD12Q1')
-            elif choice == 2:
-                return ee.ImageCollection("ESA/WorldCover/v100")
-            elif choice == 3:
-                return ee.ImageCollection("COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019")
-            elif choice == 4:
-                return ee.ImageCollection("COPERNICUS/CORINE/V20/100m/2018")
+            return int(input('Select land cover data: '))
         except ValueError:
             print('Invalid input. Please try again.')
 
 
-def get_land_cover_data(coords_data, size, seed=None):
+def select_land_cover_data(choice):
+    if choice == 1:
+        return ee.ImageCollection('MODIS/006/MCD12Q1')
+    elif choice == 2:
+        return ee.ImageCollection("ESA/WorldCover/v100")
+    elif choice == 3:
+        return ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019").select('discrete_classification')
+    elif choice == 4:
+        return ee.Image("COPERNICUS/CORINE/V20/100m/2018")
+
+
+def get_lc_urban_point(lc, choice, u_poi, scale):
+    # MODIS Land Cover
+    if choice == 1:
+        return lc.first().sample(u_poi, scale).first().get('LC_Type1').getInfo()
+    # ESA World Cover
+    elif choice == 2:
+        return lc.first().sample(u_poi, scale).first().getInfo()['properties']['Map']
+    # Copernicus Global Land Service
+    elif choice == 3:
+        return lc.sample(u_poi, scale).first().getInfo()['properties']['discrete_classification']
+    # Copernicus CORINE Land Cover
+    elif choice == 4:
+        return lc.sample(u_poi, scale).first().getInfo()['properties']['landcover']
+
+
+def get_land_cover_dataframe(choice):
+    if choice == 1:
+        return pd.read_csv('data/MODIS_LandCover_Type1.csv')
+    elif choice == 2:
+        return pd.read_csv('data/ESA_WorldCover_10m_v100.csv')
+    elif choice == 3:
+        return pd.read_csv('data/Copernicus_Landcover_100m_Proba-V-C3_Global.csv')
+    elif choice == 4:
+        return pd.read_csv('data/Copernicus_CORINE_Land_Cover.csv')
+
+
+def get_land_cover_data(coords_data, choice, size, seed=None):
     """Retrieves the land cover data from the coordinates.
 
     The keys in the dictionary are the labels and the values are the
@@ -128,14 +168,13 @@ def get_land_cover_data(coords_data, size, seed=None):
     Returns:
         cover_data (dict): dictionary with the land cover data
     """
-    # Import the MODIS land cover collection.
-    lc = ee.ImageCollection('MODIS/006/MCD12Q1')
+    lc = select_land_cover_data(choice)
     scale = 1000
 
     np.random.seed(seed)
     cover_data = []
-    random_idxs = np.sort(np.random.choice(
-        range(len(coords_data)), size=size, replace=False))
+    random_idxs = np.random.choice(
+        range(len(coords_data)), size=size, replace=False)
 
     for i in random_idxs:
         u_lat = coords_data.iloc[i]['latitude']
@@ -144,8 +183,7 @@ def get_land_cover_data(coords_data, size, seed=None):
 
         try:
             # access the earth engine API
-            lc_urban_point = lc.first().sample(
-                u_poi, scale).first().get('LC_Type1').getInfo()
+            lc_urban_point = get_lc_urban_point(lc, choice, u_poi, scale)
             cover_data.append(lc_urban_point)
         except:
             print('Error with Earth Engine. Land cover could not be retrieved.')
@@ -166,7 +204,7 @@ def get_labels_colors(cover_data, land_cover_data):
 
     Args:
         cover_data (dict): dictionary with the land cover data
-        land_cover_data (dataframe): dictionary with the colors by type of land coverage
+        land_cover_data (dataframe): dataframe with the colors by type of land coverage
 
     Returns:
         labels: labels for the pie chart
@@ -177,8 +215,6 @@ def get_labels_colors(cover_data, land_cover_data):
             land_cover_data['Value'] == i]['Description'].values[0]
         for i in cover_data
     ]
-    # The text after ':' in the description gives more detals but is not needed
-    labels = [i.split(':')[0] for i in labels]
 
     colors = [
         land_cover_data.loc[
@@ -227,10 +263,9 @@ def plot_pie_chart(cover_data, labels, colors, size, fire_name,
         if not os.path.exists(out_folder):
             os.makedirs(out_folder)
         plt.savefig(f'{out_folder}pie_{size}.png')
-    # plt.show()
 
 
-def create_plots(samples, coordinates, land_cover_data, seed=None, **kwargs):
+def create_plots(samples, coordinates, choice, seed=None, **kwargs):
     """Creates the plots for the given samples.
 
     Args:
@@ -240,11 +275,13 @@ def create_plots(samples, coordinates, land_cover_data, seed=None, **kwargs):
         seed (int): seed for the random number generator. Defaults to `None`
         **kwargs: keyword arguments for the `plot_pie_chart` function
     """
+    land_cover_dataframe = get_land_cover_dataframe(choice)
     for size in samples:
         print(f'Retrieving {size} samples...')
-        cover_data = get_land_cover_data(coordinates, size, seed)
+        cover_data = get_land_cover_data(
+            coordinates, choice, size, seed)
         print(cover_data)
-        labels, colors = get_labels_colors(cover_data, land_cover_data)
+        labels, colors = get_labels_colors(cover_data, land_cover_dataframe)
         plot_pie_chart(
             cover_data=cover_data,
             labels=labels,
@@ -254,7 +291,7 @@ def create_plots(samples, coordinates, land_cover_data, seed=None, **kwargs):
             out_folder=kwargs['out_folder'],
             save_fig=kwargs['save_fig']
         )
-    plt.show()
+    # plt.show()
 
 
 def make_pie_chart_gif(fire_name, file_path=None, **kwargs):
@@ -280,3 +317,14 @@ def make_pie_chart_gif(fire_name, file_path=None, **kwargs):
     img, *imgs = [Image.open(f'{file_path}pie_{f}.png')
                   for f in files]
     img.save(fp=out_file, format='GIF', append_images=imgs, **kwargs)
+
+
+def open_gif(fire_name, output_folder):
+    """Opens the gif created with the `make_pie_chart_gif` function.
+
+    Args:
+        fire_name (string): name of the fire
+        output_folder (string): path to the output folder
+    """
+    file_path = output_folder + fire_name + '.gif'
+    webbrowser.open_new_tab('file://' + os.path.realpath(file_path))

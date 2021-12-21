@@ -6,14 +6,33 @@ import folium
 import numpy as np
 import pandas as pd
 from folium import plugins
+from utils.land_coverage import get_choice
 
 
 def get_coordinates(fire_name):
+    """Get the coordinates of the fire.
+
+    Args:
+        fire_name (str): name of the fire
+
+    Returns:
+        coordinates (pandas.DataFrame): coordinates of the fire
+    """
     return pd.read_csv(
-        f'data/coordinates_files/coords_utm_{fire_name}.csv')
+        f'data/coordinates_files/{fire_name}.csv')
 
 
 def get_location_list(fire_name, p, seed):
+    """Get the coordinates of the fire to add to the folium map.
+
+    Args:
+        fire_name (str): name of the fire
+        p (float): probability of a fire pixel being selected
+        seed (int): seed for the random number generator
+
+    Returns:
+        location_list (list): list of coordinates of the fire
+    """
     coordinates = get_coordinates(fire_name)
     size = int(p * coordinates.shape[0])
     np.random.seed(seed)
@@ -22,8 +41,8 @@ def get_location_list(fire_name, p, seed):
     return random_coords.values.tolist()
 
 
-# Add custom basemaps to folium
 def create_basemaps():
+    """Add custom basemaps to folium map."""
     return {
         'Google Maps': folium.TileLayer(
             tiles='https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
@@ -63,8 +82,8 @@ def create_basemaps():
     }
 
 
-# Define a method for displaying Earth Engine image tiles on a folium map.
 def add_ee_layer(self, ee_object, vis_params, name):
+    """Define a method for displaying Earth Engine image tiles on a folium map."""
     try:
         # display ee.Image()
         if isinstance(ee_object, ee.image.Image):
@@ -111,35 +130,33 @@ def add_ee_layer(self, ee_object, vis_params, name):
         print(f"Could not display {name}.")
 
 
-def select_land_cover_data():
-    while True:
-        try:
-            print(
-                """
-                Please select the land cover data you want to use.
-                The choices are:
-                    1. MODIS Land Cover (2018, 500m)
-                    2. ESA World Cover (2020, 10m)
-                    3. Copernicus Global Land Service (2019, 100m)
-                    4. Copernicus Corine Land Cover (2018, 100m)
-                """
-            )
-            choice = int(input('Select land cover data: '))
-            if choice == 1:
-                dat = ee.ImageCollection('MODIS/006/MCD12Q1')
-                return dat.select('LC_Type1'), choice
-            elif choice == 2:
-                return ee.ImageCollection("ESA/WorldCover/v100").first(), choice
-            elif choice == 3:
-                return ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019").select('discrete_classification'), choice
-            elif choice == 4:
-                dat = ee.Image("COPERNICUS/CORINE/V20/100m/2018")
-                return dat.select('landcover'), choice
-        except ValueError:
-            print('Invalid input. Please try again.')
+def select_land_cover_data(choice):
+    """Select the land cover data to be displayed on the map.
+
+    Args:
+        choice (int): choice of land cover data to be displayed on the map
+            retrieved from the function `get_choice`
+    """
+    if choice == 1:
+        dat = ee.ImageCollection('MODIS/006/MCD12Q1')
+        return dat.select('LC_Type1')
+    elif choice == 2:
+        return ee.ImageCollection("ESA/WorldCover/v100").first()
+    elif choice == 3:
+        return ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019").select('discrete_classification')
+    elif choice == 4:
+        dat = ee.Image("COPERNICUS/CORINE/V20/100m/2018")
+        return dat.select('landcover')
 
 
 def add_to_map(map_, dataset, choice):
+    """Add the land cover data to the map.
+
+    Args:
+        map_ (folium.Map): map to add the land cover data to
+        dataset (ee.Image): land cover data
+        choice (int): choice of land cover data
+    """
     if choice == 1:
         map_.add_ee_layer(
             dataset,
@@ -149,14 +166,14 @@ def add_to_map(map_, dataset, choice):
                          '69fff8', 'f9ffa4', '1c0dff']},
             name='MODIS Land Cover')
     elif choice == 2:
-        map_.add_ee_layer(dataset, {}, 'ESA World Cover')
+        map_.add_ee_layer(dataset, {'bands': ['Map']}, 'ESA World Cover')
     elif choice == 3:
         map_.add_ee_layer(dataset, {}, 'Copernicus Global Land Service')
     elif choice == 4:
-        map_.add_ee_layer(dataset, {}, 'Copernicus Corine Land Cover')
+        map_.add_ee_layer(dataset, {}, 'Copernicus CORINE Land Cover')
 
 
-def create_map(fire_name, p, seed):
+def create_map(fire_name, p, seed, choice):
     """Create a folium map of the burnt area using `p` percent of the number of coordinates
     in the fire CSV.
 
@@ -180,7 +197,7 @@ def create_map(fire_name, p, seed):
     # Add markers
     location_list = get_location_list(fire_name, p, seed)
     for point in range(len(location_list)):
-        folium.Circle(location_list[point], radius=40).add_to(my_map)
+        folium.Marker(location_list[point]).add_to(my_map)
 
     # Add basemaps
     basemaps = create_basemaps()
@@ -192,7 +209,7 @@ def create_map(fire_name, p, seed):
     my_map.add_child(minimap)
 
     # Add selected land cover
-    dataset, choice = select_land_cover_data()
+    dataset = select_land_cover_data(choice)
     add_to_map(my_map, dataset, choice)
 
     # Add a layer control panel to the map.

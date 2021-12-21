@@ -22,6 +22,12 @@ def imshow(img, title=None, **kwargs):
 
 
 def plot_downloaded_images(fire_name, output_folder):
+    """Plot the created TIFF images from before and after the fire.
+
+    Args:
+        fire_name (str): name of the fire
+        output_folder (str): path to the folder where the images are stored
+    """
     before = rasterio.open(
         f"{output_folder}before_{fire_name}.tiff", driver='GTiff').read(1)
     after = rasterio.open(
@@ -61,7 +67,20 @@ def get_fire_pixels(image_folder, latitude, longitude):
     return pixel_column, pixel_row
 
 
-def plot_fire_area(image, vline_1, vline_2, hline_1, hline_2, pixel_column, pixel_row):
+def plot_fire_area(image, vline_1, vline_2, hline_1, hline_2,
+                   pixel_column, pixel_row):
+    """Plot the area inside `vline_1`, `vline_2`,
+    `hline_1`, and `hline_2`.
+
+    Args:
+        image (image): image to be delimited
+        vline_1 (int): first vertical line
+        vline_2 (int): second vertical line
+        hline_1 (int): first horizontal line
+        hline_2 (int): second horizontal line
+        pixel_column (int): column of the fire pixel
+        pixel_row (int): row of the fire pixel
+    """
     plt.figure(figsize=(12, 12))
     imshow(image)
     plt.plot(pixel_column, pixel_row, 'ro', markersize=3)
@@ -77,41 +96,48 @@ def plot_fire_area(image, vline_1, vline_2, hline_1, hline_2, pixel_column, pixe
     plt.show()
 
 
-def retrieve_fire_area(image, pixel_column, pixel_row, title=None, **kwargs):
-    satisfied = False
-    while not satisfied:
+def retrieve_fire_area(image, pixel_column, pixel_row,
+                       title=None, **kwargs):
+    """Retrieve the fire area from the image.
+
+    Args:
+        image (image): image to be processed
+        pixel_column (int): column of the fire pixel
+        pixel_row (int): row of the fire pixel
+        title (str): title of the image
+        **kwargs: additional arguments passed to `matplotlib.pyplot.imshow`
+    """
+    n, m = image.shape
+    while True:
         try:
-            vline_1 = int(input(
-                f"Enter the first vertical line. Value must be an integer between 0 and {image.shape[0]}: "))
-            vline_2 = int(input(
-                f"Enter the second vertical line. Value must be an integer between {vline_1} and {image.shape[0]}: "))
-            hline_1 = int(input(
-                f"Enter the first horizontal line. Value must be an integer between 0 and {image.shape[1]}: "))
-            hline_2 = int(input(
-                f"Enter the second horizontal line. Value must be an integer between {hline_1} and {image.shape[1]}: "))
+            print(f"""Enter the first vertical line.
+                      Value must be an integer between 0 and {n}:""")
+            vline_1 = int(input())
+            print(f"""Enter the second vertical line.
+                Value must be an integer between {vline_1} and {n}:""")
+            vline_2 = int(input())
+            print(f"""Enter the first horizontal line.
+                Value must be an integer between 0 and {m}:""")
+            hline_1 = int(input())
+            print(f"""Enter the second horizontal line.
+                Value must be an integer between {hline_1} and {m}:""")
+            hline_2 = int(input())
 
-            plot_fire_area(image,
-                           vline_1, vline_2, hline_1, hline_2,
-                           pixel_column, pixel_row)
+            fire = image[hline_1:hline_2, vline_1:vline_2]
+            imshow(fire, title, **kwargs)
+            plt.axis('off')
+            plt.show()
 
-        except ValueError:
-            print("Invalid value. Try again.")
-
-        try:
             sat = input("Are you satisfied with the values? (y/n): ")
             print("\n")
             if sat == "y":
-                satisfied = True
-            else:
-                continue
+                break
+            plot_fire_area(image,
+                           vline_1, vline_2, hline_1, hline_2,
+                           pixel_column, pixel_row)
+            continue
         except ValueError:
             print("Invalid value. Try again.")
-
-        fire = image[hline_1:hline_2, vline_1:vline_2]
-        imshow(fire, title, **kwargs)
-        plt.axis('off')
-        plt.show()
-
     return fire, hline_1, vline_1
 
 
@@ -187,7 +213,8 @@ def calculate_area(sub_image, original_image, resolution=10):
 
 
 def merge_two_images(images, horizontal=True):
-    """Merges two images. The left-most or upper image is the first image in the list.
+    """Merges two images.
+    The left-most or upper image is the first image in the list.
 
     Args:
         images (list): list of two images
@@ -230,7 +257,8 @@ def merge_images(n_images, images, horizontal=True):
         images (list): list of images to merge.
 
     Raises:
-        ValueError: Raises an error if the number of images does not match the shape of the list of images
+        ValueError: Raises an error if the number of images does not match
+            the shape of the list of images
         ValueError: Raises an error if the number of images is not 2 or 4.
 
     Returns:

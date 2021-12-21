@@ -1,6 +1,7 @@
 import datetime as dt
 import json
 import os
+import webbrowser
 
 import ee
 import matplotlib.pyplot as plt
@@ -13,7 +14,7 @@ from skimage.morphology import area_closing
 
 import utils.data_collection as dc
 import utils.image_processing as ip
-import utils.land_coverage as lc
+import utils.land_coverage as land_c
 import utils.plot_folium as pf
 
 ###############################################################################
@@ -45,7 +46,7 @@ PATH = f'data/{FIRE_NAME}/'
 # Path to the folders where the TIFF, PNG, and GIF files will be stored
 OUTPUT_FOLDER = f"output/{FIRE_NAME}/"
 
-with open(PATH + f"info_{FIRE_NAME}.json") as f:
+with open(f"data/info_{FIRE_NAME}.json") as f:
     fire_info = json.load(f)
 
 # Date of the fire
@@ -59,8 +60,6 @@ TRUE_AREA = fire_info["true_area"]
 GEOJSON_PATH = f"data/geojson_files/{FIRE_NAME}.geojson"
 # Path to the JSON file where the Sentinel API credentials are stored
 CREDENTIALS_PATH = "secrets/sentinel_api_credentials.json"
-# Path to the CSV land cover data
-LAND_COVER_DATA = pd.read_csv('data/MODIS_LandCover_Type1.csv')
 
 # Number of days both before and after the fire to get images
 OBSERVATION_INTERVAL = 15
@@ -73,10 +72,10 @@ CLOUD_THRESHOLD = 40
 # Seed for random number generator (for reproductibility)
 SEED = 42
 
-# Threshold values for calculating the fire area
+# Threshold values for calculating the area that burned
 THRESHOLDS = np.arange(0.1, 0.41, 0.02)
 # Number of coordinates to use for the pie charts
-SAMPLES = np.arange(50, 1001, 50)
+SAMPLES = np.arange(50, 251, 50)
 
 
 ###############################################################################
@@ -130,16 +129,6 @@ plt.show()
 # IMAGE PROCESSING
 ###############################################################################
 
-# split = ip.split_image(diff, FRAG_COUNT)
-# ip.plot_split_image(split, FRAG_COUNT)
-# plt.tight_layout()
-# plt.show()
-
-# fire = ip.merge_images(
-#     2, [split[(8, 11)], split[(8, 12)]], horizontal=False)
-# plt.figure(figsize=(8, 6))
-# ip.imshow(fire, 'Istres Fire')
-# plt.show()
 
 print(f'The fire is located at pixels ({pixel_column}, {pixel_row})\n')
 fire, hline_1, vline_1 = ip.retrieve_fire_area(
@@ -198,8 +187,9 @@ print(
 
 while True:
     try:
-        p = float(input(
-            r'Enter sample percentage between 0% and 100%: ')) / 100
+        p = input(
+            r'Enter sample percentage to use for land cover classification: ')
+        p = float(p) / 100
         if 0 < p <= 1:
             break
         else:
@@ -207,16 +197,12 @@ while True:
     except ValueError:
         print('Please enter a valid number.')
 
-rand_image = lc.create_sample_coordinates(fire, 42, p)
+rand_image = land_c.create_sample_coordinates(fire, 42, p)
 ip.imshow(rand_image, 'Sampled Coordinates')
 plt.show()
 
-coordinates = lc.get_coordinates_from_pixels(
-    rand_image, hline_1, vline_1, img_folder)
-coordinates = pd.DataFrame(coordinates, columns=['latitude', 'longitude'])
-coordinates.to_csv(
-    f'data/coordinates_files/coords_utm_{FIRE_NAME}.csv',
-    index=False
+coordinates = land_c.get_coordinates_from_pixels(
+    rand_image, hline_1, vline_1, img_folder, FIRE_NAME
 )
 
 output_folder = f"output/pie_chart_{FIRE_NAME}/"
@@ -225,18 +211,20 @@ if not exists:
     os.makedirs(output_folder)
 is_empty = not any(os.scandir(output_folder))
 
+choice = land_c.get_choice()
+
 if exists and is_empty or not exists:
-    lc.create_plots(
+    land_c.create_plots(
         samples=SAMPLES,
         coordinates=coordinates,
+        choice=choice,
         seed=SEED,
-        land_cover_data=LAND_COVER_DATA,
         fire_name=FIRE_NAME,
         out_folder=output_folder,
         save_fig=True
     )
 
-lc.make_pie_chart_gif(
+land_c.make_pie_chart_gif(
     fire_name=FIRE_NAME,
     file_path=output_folder,
     save_all=True,
@@ -247,7 +235,7 @@ lc.make_pie_chart_gif(
 # Create Folium map
 while True:
     try:
-        p = float(input('Value between 0 and 100: ')) / 100
+        prob = float(input('Value between 0 and 100: ')) / 100
         if 0 < p <= 1:
             break
         else:
@@ -255,11 +243,19 @@ while True:
     except ValueError:
         print('Please enter a valid number.')
 
-fire_map = pf.create_map(FIRE_NAME, p, SEED)
+fire_map = pf.create_map(FIRE_NAME, prob, SEED, choice)
 
-pf.save_map(fire_map, FIRE_NAME, 'output/maps/')
-pf.open_map(FIRE_NAME, 'output/maps/')
+output_maps = "output/maps/"
+if not os.path.exists(output_maps):
+    os.makedirs(output_maps)
 
+pf.save_map(fire_map, FIRE_NAME, output_maps)
+pf.open_map(FIRE_NAME, output_maps)
+
+# Finally, open the produced gif
+# Note that it opens the file with your default program for opening images,
+# not necessarily your default web browser.
+land_c.open_gif(FIRE_NAME, output_folder)
 
 ###############################################################################
 # WIND DATA
