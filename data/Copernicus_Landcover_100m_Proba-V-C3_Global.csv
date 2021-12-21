@@ -1,0 +1,24 @@
+Value,Color,Description
+0,#282828,Unknown
+20,#ffbb22,Shrubs
+30,#ffff4c,Herbaceous vegetation
+40,#f096ff,Cultivated and managed vegetation / agriculture
+50,#fa0000,Urban / built up
+60,#b4b4b4,Bare / sparse vegetation
+70,#f0f0f0,Snow and ice
+80,#0032c8,Permanent water bodies (lakes / reservoirs / rivers)
+90,#0096a0,Herbaceous wetland
+100,#fae6a0,Moss and lichen
+111,#58481f,Closed forest: evergreen needle leaf
+112,#009900,Closed forest: evergreen broad leaf
+113,#70663e,Closed forest: deciduous needle leaf
+114,#00cc00,Closed forest: deciduous broad leaf
+115,#4e751f,Closed forest: mixed
+116,#007800,Closed forest: not matching any of the other definitions
+121,#666000,Open forest: evergreen needle leaf
+122,#8db400,Open forest: evergreen broad leaf
+123,#8d7400,Open forest: deciduous needle leaf
+124,#a0dc00,Open forest: deciduous broad leaf
+125,#929900,Open forest: mixed
+126,#648c00,Open forest: not matching any of the other definitions
+200,#000080,Oceans and seas

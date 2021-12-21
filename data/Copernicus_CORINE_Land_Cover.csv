@@ -1,0 +1,45 @@
+Value,Color,Description
+111,#e6004d,Continuous urban fabric
+112,#ff0000,Discontinuous urban fabric
+121,#cc4df2,Industrial or commercial units
+122,#cc0000,Road and rail networks and associated land
+123,#e6cccc,Port areas
+124,#e6cce6,Airports
+131,#a600cc,Mineral extraction sites
+132,#a64dcc,Dump sites
+133,#ff4dff,Construction sites
+141,#ffa6ff,Green urban areas
+142,#ffe6ff,Sport and leisure facilities
+211,#ffffa8,Non-irrigated arable land
+212,#ffff00,Permanently irrigated land
+213,#e6e600,Rice fields
+221,#e68000,Vineyards
+222,#f2a64d,Fruit trees and berry plantations
+223,#e6a600,Olive groves
+231,#e6e64d,Pastures
+241,#ffe6a6,Annual crops associated with permanent crops
+242,#ffe64d,Complex cultivation patterns
+243,#e6cc4d,Land principally occupied by agriculture with significant areas of natural vegetation
+244,#f2cca6,Agro-forestry areas
+311,#80ff00,Broad-leaved forest
+312,#00a600,Coniferous forest
+313,#4dff00,Mixed forest
+321,#ccf24d,Natural grasslands
+322,#a6ff80,Moors and heathland
+323,#a6e64d,Sclerophyllous vegetation
+324,#a6f200,Transitional woodland-shrub
+331,#e6e6e6,Beaches / dunes / sands
+332,#cccccc,Bare rocks
+333,#ccffcc,Sparsely vegetated areas
+334,#000000,Burnt areas
+335,#a6e6cc,Glaciers and perpetual snow
+411,#a6a6ff,Inland marshes
+412,#4d4dff,Peat bogs
+421,#ccccff,Salt marshes
+422,#e6e6ff,Salines
+423,#a6a6e6,Intertidal flats
+511,#00ccf2,Water courses
+512,#80f2e6,Water bodies
+521,#00ffa6,Coastal lagoons
+522,#a6ffe6,Estuaries
+523,#e6f2ff,Sea and ocean
