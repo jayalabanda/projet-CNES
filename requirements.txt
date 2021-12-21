@@ -22,5 +22,5 @@ pillow
 scikit-image
 
 # others
-rtree
 notebook
+beautifulsoup4

@@ -7,7 +7,7 @@ The main goal is to create an "impact map" containing information about wildfire
 To-do list:
 
 - [ ] (optional) find new API for ~~land cover and~~ wind information
-- [ ] try other land cover data with `earth-engine`
+- [x] try other land cover data with `earth-engine`
 - [ ] create convex hull figures from fire coordinates
 - [ ] continue working on [main.py](main.py)
 - [ ] clean and test new scripts inside [utils](utils/) folder
