@@ -169,9 +169,6 @@ def download_from_api(api, uuid, title, path='./data/'):
         os.makedirs(path)
     dirs = os.listdir(path)
     dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
-    if len(dirs_safe) == 2:
-        print("Two SAFE folders already exist.")
-        return
 
     # the name of the downloaded file is 'title + .SAFE'
     img_folder = title + '.SAFE'
@@ -351,7 +348,7 @@ def get_before_after_images(**kwargs):
     get_image(when='after', **kwargs)
 
 
-def plot_ndvi_difference(output_folder, fire_name, figsize=(10, 10)):
+def plot_ndvi_difference(output_folder, fire_name, figsize=(8, 8)):
     """Plots and returns the NDVI difference between the images.
 
     Args:
@@ -369,3 +366,23 @@ def plot_ndvi_difference(output_folder, fire_name, figsize=(10, 10)):
     plt.figure(figsize=figsize)
     imshow(difference, "NDVI Difference")
     return difference
+
+
+def check_downloaded_data(path, output_folder, fire_name):
+    """Check if the data has already been downloaded.
+
+    Args:
+        output_folder (str): path to the folder where the images are stored
+
+    Returns:
+        bool: True if the data is downloaded, False otherwise
+    """
+    dirs = os.listdir(path)
+    dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
+    before_exists = os.path.exists(f'{output_folder}before_{fire_name}.tiff')
+    after_exists = os.path.exists(f'{output_folder}after_{fire_name}.tiff')
+
+    if len(dirs_safe) == 2 or before_exists and after_exists:
+        print("Data has already been downloaded.")
+        return True
+    return False

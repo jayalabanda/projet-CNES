@@ -111,7 +111,7 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
     while True:
         try:
             print(f"""Enter the first vertical line.
-                      Value must be an integer between 0 and {n}:""")
+                Value must be an integer between 0 and {n}:""")
             vline_1 = int(input())
             print(f"""Enter the second vertical line.
                 Value must be an integer between {vline_1} and {n}:""")

@@ -1,12 +1,10 @@
 import datetime as dt
 import json
 import os
-import webbrowser
 
 import ee
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import seaborn as sns
 
 from sentinelsat import SentinelAPI
@@ -16,6 +14,7 @@ import utils.data_collection as dc
 import utils.image_processing as ip
 import utils.land_coverage as land_c
 import utils.plot_folium as pf
+
 
 ###############################################################################
 # SETUP
@@ -112,6 +111,11 @@ except Exception as e:
 
 ip.plot_downloaded_images(FIRE_NAME, OUTPUT_FOLDER)
 
+
+###############################################################################
+# IMAGE PROCESSING
+###############################################################################
+
 img_folder = PATH + os.listdir(PATH)[1] + '/'
 pixel_column, pixel_row = ip.get_fire_pixels(
     img_folder,
@@ -124,12 +128,6 @@ plt.plot(pixel_column, pixel_row, 'ro',
 plt.legend()
 plt.show()
 
-
-###############################################################################
-# IMAGE PROCESSING
-###############################################################################
-
-
 print(f'The fire is located at pixels ({pixel_column}, {pixel_row})\n')
 fire, hline_1, vline_1 = ip.retrieve_fire_area(
     diff, pixel_column, pixel_row, 'Fire Area'
@@ -141,6 +139,7 @@ for thr in THRESHOLDS:
     area = round(ip.calculate_area(tmp, diff) * 100, 4)
     areas.append(area)
 
+print(f'The true area that burned is {TRUE_AREA} hectares\n')
 plt.figure(figsize=(8, 6))
 with sns.axes_style('darkgrid'):
     plt.plot(THRESHOLDS, areas)
