@@ -1,18 +1,24 @@
+# python
+python==3.8.*
+
 # base scientific libraries
 numpy
 scipy
 pandas
+xarray
 
 # plotting libraries
 matplotlib
 seaborn
 folium
+ipyleaflet
 
 # geospatial libraries
 rasterio
 sentinelsat
 utm
 geojson
+geopandas
 fiona
 earthengine-api
 
@@ -24,3 +30,4 @@ scikit-image
 # others
 notebook
 beautifulsoup4
+rtree==0.9.3

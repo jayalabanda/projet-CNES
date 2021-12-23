@@ -75,7 +75,7 @@ Alternatively, you can download the repository as a ZIP file by clicking [here](
 Then, run these commands:
 
 ```console
-> conda env create -n cnes -f environment.yml
+> conda env create -f environment.yml
 > conda activate cnes
 ```
 

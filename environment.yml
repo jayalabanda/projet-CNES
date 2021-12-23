@@ -1,0 +1,23 @@
+name: cnes
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8.*
+  - geopandas
+  - rtree=0.9.3
+  - sentinelsat
+  - rasterio
+  - seaborn
+  - earthengine-api
+  - scikit-image
+  - notebook
+  - mplleaflet
+  - opencv
+  - cdsapi
+  - xarray
+  - bottleneck
+  - dask
+  - netcdf4
+  - beautifulsoup4
+  - ipyleaflet

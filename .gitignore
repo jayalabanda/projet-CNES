@@ -10,6 +10,7 @@
 *.qgz
 *.zip
 *.json
+*.geojson
 *.nc
 
 # folders
