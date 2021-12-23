@@ -6,7 +6,6 @@ import folium
 import numpy as np
 import pandas as pd
 from folium import plugins
-from utils.land_coverage import get_choice
 
 
 def get_coordinates(fire_name):
@@ -173,6 +172,18 @@ def add_to_map(map_, dataset, choice):
         map_.add_ee_layer(dataset, {}, 'Copernicus CORINE Land Cover')
 
 
+def get_legend(choice):
+    # Image legends are hosted online
+    if choice == 1:
+        return 'https://i.ibb.co/w0Jhsck/legend-MODIS.png'
+    elif choice == 2:
+        return 'https://i.ibb.co/BGS690y/legend-ESA.png'
+    elif choice == 3:
+        return 'https://i.ibb.co/hDyGSxT/legend-CGLS.png'
+    elif choice == 4:
+        return 'https://i.ibb.co/1sFzhf8/legend-CORINE.png'
+
+
 def create_map(fire_name, p, seed, choice):
     """Create a folium map of the burnt area using `p` percent of the number of coordinates
     in the fire CSV.
@@ -207,6 +218,10 @@ def create_map(fire_name, p, seed, choice):
     # Add minimap
     minimap = plugins.MiniMap()
     my_map.add_child(minimap)
+
+    # Add legend
+    leg = get_legend(choice)
+    plugins.FloatImage(leg, bottom=80, left=55).add_to(my_map)
 
     # Add selected land cover
     dataset = select_land_cover_data(choice)
