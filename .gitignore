@@ -10,6 +10,7 @@
 *.qgz
 *.zip
 *.json
+*.nc
 
 # folders
 *.SAFE/
@@ -20,3 +21,11 @@ output/
 
 # credentials folder
 secrets/
+
+# shapefile dependencies
+shp/
+*.shp
+*.cpg
+*.dbf
+*.prj
+*.shx

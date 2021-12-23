@@ -210,6 +210,7 @@ def calculate_ndvi(red_band, nir_band):
     """Calculates the NDVI of a given image.
 
     The NDVI is calculated as:
+        `(nir - red) / (nir + red)`
         or `(B08 - B04) / (B08 + B04)`
     where `B04` is the red band, and `B08` is the near-infrared band.
 
@@ -242,14 +243,10 @@ def create_ndvi_tiff_image(path, when, fire_name, output_folder='output/'):
     Returns:
         image: opened image with the given uuid
     """
-    # Check if output_folder already contains TIFF files
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
     output_file = f'{output_folder}{when}_{fire_name}.tiff'
-    if os.path.exists(output_file):
-        print("TIFF file already exists.")
-        return
 
     image_path_b4 = get_band(path, 'B04', resolution=10)
     image_path_b8 = get_band(path, 'B08', resolution=10)
