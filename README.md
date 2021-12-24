@@ -29,8 +29,8 @@ The final objective was to automate this process as much as possible, where we o
 
 Some previous information is needed to execute this notebook. This information includes:
 
-* the date of the wildfire in format `YYYY-MM-DD`
-* a pair of coordinates _latitude_ and _longitude_ inside the wildfire, such as $44.5, 4.0$
+* the date of the wildfire in format `YYYY-MM-DD`,
+* a pair of coordinates _latitude_ and _longitude_ inside the wildfire, such as $44.5, 4.0$,
 * the true area that burned in hectares. This value is easily retrievable in the news.
 
 This information must be saved in a JSON file saved as `info_NAME.json` inside [data/info_fires/](data/info_fires/):
@@ -44,13 +44,23 @@ This information must be saved in a JSON file saved as `info_NAME.json` inside [
 }
 ```
 
-where the latitude, longitude, and true area are floats (without the ""). An example is given inside [info_var.json](data/info_fires/info_var.json).
+where the latitude, longitude, and true area are floats (without the ""). An example is:
+
+```JSON
+{
+    "name": "Var",
+    "wildfire_date": "2021-08-17",
+    "latitude": 43.314677,
+    "longitude": 6.451894,
+    "true_area": 7100.0
+}
+```
 
 _Note: the name field is not necessary but is given for clarification._
 
 ### Sentinel API
 
-Moreover, you will need an (also free) Copernicus Open Access Hub account [here](https://sentinelsat.readthedocs.io/en/latest/index.html). Then save your credentials in a JSON file inside the _secrets_ folder named `sentinel_api_credentials.json`:
+Moreover, you will need an (also free) Copernicus Open Access Hub account [here](https://sentinelsat.readthedocs.io/en/latest/index.html). Then save your credentials in a JSON file inside the `secrets` folder named `sentinel_api_credentials.json`:
 
 ```JSON
 {
@@ -113,21 +123,22 @@ The file structure of the repository is, ideally, as follows:
 where:
 
 * the downloaded images and land cover dataframes are in [data](data/),
-* Python scripts are inside the folder of the same name
-* the utility functions are located inside [utils](utils/)
-* and your access credentials for the Sentinel API are inside [secrets](secrets/).
+* Python scripts are inside the folder of the same name `scripts/`,
+* the utility functions are located inside [utils](utils/),
+* wind data files stored as NetCDF (.nc) are located in the `nc_files` folder,
+* and your access credentials for the Sentinel API are inside `secrets/`
 
-### Downloaded images
+#### Downloaded images
 
 The first step is obtaining the images. The downloaded folder can vary in size (up to 1.2 GB), and the produced TIFF files are also around 1 GB each, so please keep this in mind if you have low storage left in your drive. Although, if you are only interested in using the NDVI, you may delete the folders `R20m` and `R60m`.
 
 Moreover, as the downloaded data are large, the first step of the process may take a long time, depending on your download speed and the server's upload speed.
 
-### Coordinates files
+#### Coordinates files
 
 This folder will contain any CSV files created during the execution of the program. These files will contain pairs of latitude and longitude coordinates of the affected areas.
 
-### GeoJSON files
+#### GeoJSON files
 
 The GeoJSON file format is a special type of file storing geospatial data, in a similar format to JSON files. More in-depth information is available at [ArcGIS Online](https://doc.arcgis.com/en/arcgis-online/reference/geojson.htm).
 
@@ -135,7 +146,7 @@ A step-by-step guide to creating a GeoJSON file for an area of interest is given
 
 ---
 
-#### Contact details
+Contact details
 
 If you have any questions or encounter any problems, please contact me at my email: [ayalaban@insa-toulouse.fr](mailto:ayalaban@insa-toulouse.fr), or open a pull request.
 
