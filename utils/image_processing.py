@@ -122,6 +122,11 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
             print(f"""Enter the second horizontal line.
                 Value must be an integer between {hline_1} and {m}:""")
             hline_2 = int(input())
+            print("""Your inputs:
+                vline_1: {vline_1}
+                vline_2: {vline_2}
+                hline_1: {hline_1}
+                hline_2: {hline_2}""")
 
             fire = image[hline_1:hline_2, vline_1:vline_2]
             imshow(fire, title, **kwargs)

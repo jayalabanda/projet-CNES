@@ -345,12 +345,13 @@ def get_before_after_images(**kwargs):
     get_image(when='after', **kwargs)
 
 
-def plot_ndvi_difference(output_folder, fire_name, figsize=(8, 8)):
+def plot_ndvi_difference(output_folder, fire_name, save_diff=False, figsize=(8, 8)):
     """Plots and returns the NDVI difference between the images.
 
     Args:
         output_folder (str): path to the folder where the images are stored
         fire_name (str): name of the fire
+        save_diff (bool): whether to save the difference image. Defaults to `False`
         figsize (tuple): size of the figure
 
     Returns:
@@ -359,6 +360,20 @@ def plot_ndvi_difference(output_folder, fire_name, figsize=(8, 8)):
     before = rasterio.open(f'{output_folder}before_{fire_name}.tiff').read(1)
     after = rasterio.open(f'{output_folder}after_{fire_name}.tiff').read(1)
     difference = before - after
+
+    if save_diff:
+        # save the difference image
+        output_file = f'{output_folder}ndvi_difference_{fire_name}.tiff'
+        if not os.path.exists(output_file):
+            with rasterio.open(fp=output_file,
+                               mode='w', driver='GTiff',
+                               width=before.shape[1],
+                               height=before.shape[0],
+                               count=1,
+                               crs=before.crs,
+                               transform=before.transform,
+                               dtype='float64') as diff_img:
+                diff_img.write(difference, 1)
 
     plt.figure(figsize=figsize)
     imshow(difference, "NDVI Difference")

@@ -33,7 +33,7 @@ Some previous information is needed to execute this notebook. This information i
 * a pair of coordinates _latitude_ and _longitude_ inside the wildfire, such as $44.5, 4.0$,
 * the true area that burned in hectares. This value is easily retrievable in the news.
 
-This information must be saved in a JSON file saved as `info_NAME.json` inside [data/info_fires/](data/info_fires/):
+This information must be saved in a JSON file saved as `info_NAME.json` inside `data/info_fires/`:
 
 ```JSON
 {
@@ -123,7 +123,7 @@ The file structure of the repository is, ideally, as follows:
 where:
 
 * the downloaded images and land cover dataframes are in [data](data/),
-* Python scripts are inside the folder of the same name `scripts/`,
+* Python scripts are inside the folder of the same name [scripts/](scripts/),
 * the utility functions are located inside [utils](utils/),
 * wind data files stored as NetCDF (.nc) are located in the `nc_files` folder,
 * and your access credentials for the Sentinel API are inside `secrets/`
@@ -154,7 +154,7 @@ If you have any questions or encounter any problems, please contact me at my ema
 
 To-do list:
 
-* [ ] (optional) find new API for ~~land cover and~~ wind information
+* [x] (optional) find new API for ~~land cover and~~ wind information
 * [x] try other land cover data with `earth-engine`
 * [ ] create convex hull figures from fire coordinates
 * [ ] continue working on [main.py](main.py)
