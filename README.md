@@ -23,14 +23,54 @@ The final objective was to automate this process as much as possible, where we o
 
 ---
 
-## Instructions
+## Obtaining the code
+
+### Downloading the code
+
+In order to execute the code in this repository, you need to install [Anaconda](https://www.anaconda.com/products/individual) and [git](https://git-scm.com/downloads).
+
+Next, clone this project by typing the following commands in a terminal:
+
+```console
+> git clone https://github.com/jayalabanda/projet-CNES.git
+> cd projet-CNES
+```
+
+Alternatively, you can download the repository as a ZIP file by clicking [here](https://github.com/jayalabanda/projet-CNES/archive/refs/heads/main.zip), then unzipping the files into the directory of your choice.
+
+Then, run these commands:
+
+```console
+> conda env create -f environment.yml
+> conda activate cnes
+```
+
+_Note: if you want to install the packages manually, it is **highly** recommended to install them using Anaconda's `conda` command and `conda-forge` channel instead of pip, since using both package managers can produce many errors._
+
+### Executing the code
+
+There are two ways of executing the code. You can type:
+
+```console
+> python main.py
+```
+
+in a console, which will launch the application on the command line, or open the notebook [main.ipynb](main.ipynb) in Jupyter Notebook by executing the command:
+
+```console
+> jupyter notebook
+```
+
+---
+
+## Setup
 
 ### Wildfire information
 
-Some previous information is needed to execute this notebook. This information includes:
+Some previous information is needed to execute the code in the notebook or scripts. This information includes:
 
 * the date of the wildfire in format `YYYY-MM-DD`,
-* a pair of coordinates _latitude_ and _longitude_ inside the wildfire, such as $44.5, 4.0$,
+* a pair of coordinates _latitude_ and _longitude_ inside the wildfire, such as $44.5, 4.0$ (more information in [INSTRUCTIONS.md](INTRUCTIONS.md)),
 * the true area that burned in hectares. This value is easily retrievable in the news.
 
 This information must be saved in a JSON file saved as `info_NAME.json` inside `data/info_fires/`:
@@ -60,7 +100,7 @@ _Note: the name field is not necessary but is given for clarification._
 
 ### Sentinel API
 
-Moreover, you will need an (also free) Copernicus Open Access Hub account [here](https://sentinelsat.readthedocs.io/en/latest/index.html). Then save your credentials in a JSON file inside the `secrets` folder named `sentinel_api_credentials.json`:
+Moreover, you will need a free Copernicus Open Access Hub account [here](https://sentinelsat.readthedocs.io/en/latest/index.html). Then save your credentials in a JSON file inside the `secrets` folder named `sentinel_api_credentials.json`:
 
 ```JSON
 {
@@ -69,41 +109,19 @@ Moreover, you will need an (also free) Copernicus Open Access Hub account [here]
 }
 ```
 
-### Obtaining the code
+### Climate Data Store API
 
-In order to execute the code in this repository, you need to install [Anaconda](https://www.anaconda.com/distribution/) and [git](https://git-scm.com/downloads).
-
-Next, clone this project by typing the following commands in a terminal:
+You will also need a free CDS account to retrieve wind data. Instructions are given here: [How to use the CDS API](https://cds.climate.copernicus.eu/api-how-to). Remember to install the CDS API client using
 
 ```console
-> git clone https://github.com/jayalabanda/projet-CNES.git
-> cd projet-CNES
+> conda install -c conda-forge cdsapi
 ```
 
-Alternatively, you can download the repository as a ZIP file by clicking [here](https://github.com/jayalabanda/projet-CNES/archive/refs/heads/main.zip), then unzipping the files into the directory of your choice.
+instead of using `pip`.
 
-Then, run these commands:
+---
 
-```console
-> conda env create -f environment.yml
-> conda activate cnes
-```
-
-_Note: if you want to install the packages manually, it is **highly** recommended to install them using Anaconda's `conda` command and `conda-forge` channel instead of pip, since using both package managers can produce many errors._
-
-There are two ways of executing the code. You can type:
-
-```console
-> python main.py
-```
-
-in a console, which will ask the user for multiples inputs on the command line, or open the notebook [main.ipynb](main.ipynb) in Jupyter Notebook by executing the command:
-
-```console
-> jupyter notebook
-```
-
-### File structure
+## File structure
 
 The file structure of the repository is, ideally, as follows:
 
@@ -128,17 +146,17 @@ where:
 * wind data files stored as NetCDF (.nc) are located in the `nc_files` folder,
 * and your access credentials for the Sentinel API are inside `secrets/`
 
-#### Downloaded images
+### Downloaded images
 
-The first step is obtaining the images. The downloaded folder can vary in size (up to 1.2 GB), and the produced TIFF files are also around 1 GB each, so please keep this in mind if you have low storage left in your drive. Although, if you are only interested in using the NDVI, you may delete the folders `R20m` and `R60m`.
+The first step is obtaining the images. The downloaded folders can vary in size (up to 1.2 GB each), and the produced TIFF files are also around 1 GB each, so please keep this in mind if you have low storage left in your drive. Although, if you are only interested in using the NDVI, you may delete the folders `R20m` and `R60m`.
 
 Moreover, as the downloaded data are large, the first step of the process may take a long time, depending on your download speed and the server's upload speed.
 
-#### Coordinates files
+### Coordinates files
 
 This folder will contain any CSV files created during the execution of the program. These files will contain pairs of latitude and longitude coordinates of the affected areas.
 
-#### GeoJSON files
+### GeoJSON files
 
 The GeoJSON file format is a special type of file storing geospatial data, in a similar format to JSON files. More in-depth information is available at [ArcGIS Online](https://doc.arcgis.com/en/arcgis-online/reference/geojson.htm).
 
