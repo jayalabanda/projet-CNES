@@ -21,23 +21,23 @@ def imshow(img, title=None, **kwargs):
         plt.title(title)
 
 
-def plot_downloaded_images(fire_name, output_folder):
+def plot_downloaded_images(fire_name, output_folder, cmap=None):
     """Plot the created TIFF images from before and after the fire.
 
     Args:
         fire_name (str): name of the fire
         output_folder (str): path to the folder where the images are stored
     """
-    before = rasterio.open(
-        f"{output_folder}before_{fire_name}.tiff", driver='GTiff').read(1)
-    after = rasterio.open(
-        f"{output_folder}after_{fire_name}.tiff", driver='GTiff').read(1)
+    bef = rasterio.open(f"{output_folder}before_{fire_name}.tiff",
+                        driver='GTiff').read(1)
+    aft = rasterio.open(f"{output_folder}after_{fire_name}.tiff",
+                        driver='GTiff').read(1)
 
     _, axs = plt.subplots(1, 2, figsize=(10, 10))
-    axs[0].imshow(before)
+    axs[0].imshow(bef, cmap=cmap)
     axs[0].set_title("NDVI Before")
     axs[0].axis('off')
-    axs[1].imshow(after)
+    axs[1].imshow(aft, cmap=cmap)
     axs[1].set_title("NDVI After")
     axs[1].axis('off')
     plt.tight_layout()
@@ -67,30 +67,29 @@ def get_fire_pixels(image_folder, latitude, longitude):
     return pixel_column, pixel_row
 
 
-def plot_fire_area(image, vline_1, vline_2, hline_1, hline_2,
+def plot_fire_area(image, v1, v2, h1, h2,
                    pixel_column, pixel_row):
-    """Plot the area inside `vline_1`, `vline_2`,
-    `hline_1`, and `hline_2`.
+    """Plot the area inside `v1`, `v2`, `h1`, and `h2`.
 
     Args:
         image (image): image to be delimited
-        vline_1 (int): first vertical line
-        vline_2 (int): second vertical line
-        hline_1 (int): first horizontal line
-        hline_2 (int): second horizontal line
+        v1 (int): first vertical line
+        v2 (int): second vertical line
+        h1 (int): first horizontal line
+        h2 (int): second horizontal line
         pixel_column (int): column of the fire pixel
         pixel_row (int): row of the fire pixel
     """
     plt.figure(figsize=(12, 12))
     imshow(image)
     plt.plot(pixel_column, pixel_row, 'ro', markersize=3)
-    plt.vlines(vline_1, ymin=0, ymax=image.shape[0],
+    plt.vlines(v1, ymin=0, ymax=image.shape[0],
                color='r', linestyle='dashed', linewidth=1)
-    plt.vlines(vline_2, ymin=0, ymax=image.shape[0],
+    plt.vlines(v2, ymin=0, ymax=image.shape[0],
                color='r', linestyle='dashed', linewidth=1)
-    plt.hlines(hline_1, xmin=0, xmax=image.shape[1],
+    plt.hlines(h1, xmin=0, xmax=image.shape[1],
                color='r', linestyle='dashed', linewidth=1)
-    plt.hlines(hline_2, xmin=0, xmax=image.shape[1],
+    plt.hlines(h2, xmin=0, xmax=image.shape[1],
                color='r', linestyle='dashed', linewidth=1)
     plt.tight_layout()
     plt.show()
@@ -112,23 +111,29 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
         try:
             print(f"""Enter the first vertical line.
                 Value must be an integer between 0 and {n}:""")
-            vline_1 = int(input())
+            v1 = int(input())
+            assert 0 <= v1 <= n
             print(f"""Enter the second vertical line.
-                Value must be an integer between {vline_1} and {n}:""")
-            vline_2 = int(input())
+                Value must be an integer between {v1} and {n}:""")
+            v2 = int(input())
+            assert v1 < v2 <= n
             print(f"""Enter the first horizontal line.
                 Value must be an integer between 0 and {m}:""")
-            hline_1 = int(input())
+            h1 = int(input())
+            assert 0 <= h1 <= m
             print(f"""Enter the second horizontal line.
-                Value must be an integer between {hline_1} and {m}:""")
-            hline_2 = int(input())
+                Value must be an integer between {h1} and {m}:""")
+            h2 = int(input())
+            assert h1 < h2 <= m
             print(f"""Your inputs:
-                1st vertical line: {vline_1}
-                2nd vertical line: {vline_2}
-                1st horizontal line: {hline_1}
-                2nd horizontal line: {hline_2}""")
+                1st vertical line: {v1}
+                2nd vertical line: {v2}
+                1st horizontal line: {h1}
+                2nd horizontal line: {h2}
+                """)
 
-            fire = image[hline_1:hline_2, vline_1:vline_2]
+            fire = image[h1:h2, v1:v2]
+            plt.figure(figsize=(10, 10))
             imshow(fire, title, **kwargs)
             plt.axis('off')
             plt.show()
@@ -138,12 +143,12 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
             if sat == "y":
                 break
             plot_fire_area(image,
-                           vline_1, vline_2, hline_1, hline_2,
+                           v1, v2, h1, h2,
                            pixel_column, pixel_row)
             continue
         except ValueError:
             print("Invalid value. Try again.")
-    return fire, hline_1, vline_1
+    return fire, h1, v1
 
 
 def split_image(image, fragment_count):

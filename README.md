@@ -109,6 +109,10 @@ Moreover, you will need a free Copernicus Open Access Hub account [here](https:/
 }
 ```
 
+### Google Earth Engine API
+
+In order to use Google's Earth Engine API, you must create a (free) account at [Earth Engine API](https://developers.google.com/earth-engine) and then authenticate once. Your token will be saved so you will not need to do it again anymore.
+
 ### Climate Data Store API
 
 You will also need a free CDS account to retrieve wind data. Instructions are given here: [How to use the CDS API](https://cds.climate.copernicus.eu/api-how-to). Remember to install the CDS API client using

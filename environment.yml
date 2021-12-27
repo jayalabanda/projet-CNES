@@ -13,7 +13,6 @@ dependencies:
   - earthengine-api
   - scikit-image
   - notebook
-  - mplleaflet
   - opencv
   - cdsapi
   - xarray
@@ -22,4 +21,5 @@ dependencies:
   - netcdf4
   - beautifulsoup4
   - ipyleaflet
+  - cdsapi
   - pywin32=225

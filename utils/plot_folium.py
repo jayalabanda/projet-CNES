@@ -5,6 +5,7 @@ import ee
 import folium
 import numpy as np
 import pandas as pd
+
 from folium import plugins
 
 
@@ -184,14 +185,18 @@ def get_legend(choice):
         return 'https://i.ibb.co/1sFzhf8/legend-CORINE.png'
 
 
-def create_map(fire_name, p, seed, choice):
-    """Create a folium map of the burnt area using `p` percent of the number of coordinates
-    in the fire CSV.
+def create_map(fire_name, p, seed, choice, cluster=False, fullscreen=True, legend=True):
+    """Create a folium map of the burnt area using `p` percent of the number
+    of coordinates in the fire CSV.
 
-    A Google Satellite and Google Maps layer are added to the map, along with the selected
-    land cover layer used in the `select_land_cover_data` function.
+    A Google Satellite and Google Maps layers are added to the map,
+    along with the selected land cover layer used in the
+    `select_land_cover_data` function.
 
-    The map also has a minimap and a layer control option.
+    The map also has a minimap, fullscreen, legend, and layer control options.
+
+    For more details on the folium map, see:
+    https://python-visualization.github.io/folium/quickstart.html
 
     Args:
         fire_name (str): name of the fire
@@ -205,10 +210,17 @@ def create_map(fire_name, p, seed, choice):
     center = coordinates.mean(axis=0).to_list()
     my_map = folium.Map(location=center, zoom_start=12)
 
-    # Add markers
     location_list = get_location_list(fire_name, p, seed)
-    for point in range(len(location_list)):
-        folium.Marker(location_list[point]).add_to(my_map)
+    if cluster:
+        # Create marker cluster
+        marker_cluster = plugins.MarkerCluster(
+            name="Wildfire Location").add_to(my_map)
+        # Add markers
+        for point in range(len(location_list)):
+            folium.Marker(location_list[point]).add_to(marker_cluster)
+    else:
+        for point in range(len(location_list)):
+            folium.Marker(location_list[point]).add_to(my_map)
 
     # Add basemaps
     basemaps = create_basemaps()
@@ -216,12 +228,12 @@ def create_map(fire_name, p, seed, choice):
     basemaps['Google Satellite Hybrid'].add_to(my_map)
 
     # Add minimap
-    minimap = plugins.MiniMap()
-    my_map.add_child(minimap)
+    my_map.add_child(plugins.MiniMap())
 
-    # Add legend
-    leg = get_legend(choice)
-    plugins.FloatImage(leg, bottom=80, left=55).add_to(my_map)
+    if legend:
+        # Add legend
+        leg = get_legend(choice)
+        plugins.FloatImage(leg, bottom=80, left=55).add_to(my_map)
 
     # Add selected land cover
     dataset = select_land_cover_data(choice)
@@ -230,8 +242,9 @@ def create_map(fire_name, p, seed, choice):
     # Add a layer control panel to the map.
     my_map.add_child(folium.LayerControl())
 
-    # Add fullscreen button
-    plugins.Fullscreen().add_to(my_map)
+    if fullscreen:
+        # Add fullscreen button
+        plugins.Fullscreen().add_to(my_map)
 
     # Display the map.
     # my_map

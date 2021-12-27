@@ -192,7 +192,7 @@ def download_from_api(api, uuid, title, path='./data/'):
         print("Deleted zip file.")
 
 
-def open_rasterio(image_path):
+def open_rasterio(image_path, driver='JP2OpenJPEG'):
     """Opens the given image with rasterio.
 
     Args:
@@ -201,7 +201,7 @@ def open_rasterio(image_path):
     Returns:
         img: image opened with rasterio
     """
-    with rasterio.open(image_path, driver='JP2OpenJPEG') as infile:
+    with rasterio.open(image_path, driver=driver) as infile:
         img = infile.read(1).astype('float64')
     return img
 
