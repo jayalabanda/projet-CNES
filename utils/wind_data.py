@@ -22,8 +22,7 @@ def retrieve_wind_data(fire_name, year, month, day, hours,
     """
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-    output_file = output_path + 'wind_data_' + fire_name + \
-        year + '_' + month + '_' + day + '.nc'
+    output_file = f"{output_path}wind_data_{fire_name}_{year}_{month}_{day}.nc"
 
     c = cdsapi.Client()
     c.retrieve(

@@ -6,6 +6,7 @@ numpy
 scipy
 pandas
 xarray
+netcdf4
 
 # plotting libraries
 matplotlib
@@ -19,8 +20,8 @@ sentinelsat
 utm
 geojson
 geopandas
-fiona
 earthengine-api
+cdsapi
 
 # image processing libraries
 opencv
@@ -31,3 +32,6 @@ scikit-image
 notebook
 beautifulsoup4
 rtree==0.9.3
+pywin32==225
+dask
+bottleneck

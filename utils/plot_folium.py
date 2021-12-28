@@ -135,7 +135,6 @@ def select_land_cover_data(choice):
 
     Args:
         choice (int): choice of land cover data to be displayed on the map
-            retrieved from the function `get_choice`
     """
     if choice == 1:
         dat = ee.ImageCollection('MODIS/006/MCD12Q1')
@@ -143,7 +142,9 @@ def select_land_cover_data(choice):
     elif choice == 2:
         return ee.ImageCollection("ESA/WorldCover/v100").first()
     elif choice == 3:
-        return ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019").select('discrete_classification')
+        return ee.Image(
+            "COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019").select(
+                'discrete_classification')
     elif choice == 4:
         dat = ee.Image("COPERNICUS/CORINE/V20/100m/2018")
         return dat.select('landcover')
@@ -161,9 +162,10 @@ def add_to_map(map_, dataset, choice):
         map_.add_ee_layer(
             dataset,
             {'min': 1.0, 'max': 17.0,
-             'palette': ['05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
-                         'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
-                         '69fff8', 'f9ffa4', '1c0dff']},
+             'palette': ['05450a', '086a10', '54a708', '78d203',
+                         '009900', 'c6b044', 'dcd159', 'dade48',
+                         'fbff13', 'b6ff05', '27ff87', 'c24f44',
+                         'a5a5a5', 'ff6d4c', '69fff8', 'f9ffa4', '1c0dff']},
             name='MODIS Land Cover')
     elif choice == 2:
         map_.add_ee_layer(dataset, {'bands': ['Map']}, 'ESA World Cover')
@@ -185,8 +187,14 @@ def get_legend(choice):
         return 'https://i.ibb.co/1sFzhf8/legend-CORINE.png'
 
 
-def create_map(fire_name, p, seed, choice, cluster=False, fullscreen=True, legend=True):
-    """Create a folium map of the burnt area using `p` percent of the number
+def create_map(fire_name,
+               prob,
+               seed,
+               choice,
+               cluster=False,
+               fullscreen=True,
+               legend=True):
+    """Create a folium map of the burnt area using `prob` percent of the number
     of coordinates in the fire CSV.
 
     A Google Satellite and Google Maps layers are added to the map,
@@ -200,9 +208,14 @@ def create_map(fire_name, p, seed, choice, cluster=False, fullscreen=True, legen
 
     Args:
         fire_name (str): name of the fire
-        p (float): percentage of coordinates to use in the map
-        seed (int): seed used to generate the sampled coordinates.
+        prob (float): percentage of coordinates to use in the map
+        seed (int): seed used to generate the sampled coordinates
+        choice (int): choice of land cover data
+        cluster (bool): whether to cluster the coordinates. Default is `False`
+        fullscreen (bool): whether to add a fullscreen button. Default is `True`
+        legend (bool): whether to add a floating legend. Default is `True`
     """
+    assert 0 < prob <= 1, '`prob` must be between 0 and 1.'
     # Add EE drawing method to folium.
     folium.Map.add_ee_layer = add_ee_layer
 
@@ -210,7 +223,7 @@ def create_map(fire_name, p, seed, choice, cluster=False, fullscreen=True, legen
     center = coordinates.mean(axis=0).to_list()
     my_map = folium.Map(location=center, zoom_start=12)
 
-    location_list = get_location_list(fire_name, p, seed)
+    location_list = get_location_list(fire_name, prob, seed)
     if cluster:
         # Create marker cluster
         marker_cluster = plugins.MarkerCluster(

@@ -4,8 +4,13 @@ channels:
   - defaults
 dependencies:
   - python=3.8.*
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - folium
+  - pillow
   - geopandas
-  - rtree=0.9.3
   - sentinelsat
   - utm
   - rasterio
@@ -23,3 +28,4 @@ dependencies:
   - ipyleaflet
   - cdsapi
   - pywin32=225
+  - rtree=0.9.3
