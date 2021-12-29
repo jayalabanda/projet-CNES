@@ -1,11 +1,15 @@
 import os
 
 import cdsapi
+import geemap
 import xarray as xr
-from ipyleaflet import (FullScreenControl, LayersControl, Map, Marker,
+
+from ipyleaflet import (FullScreenControl, LayersControl, Marker,
                         WidgetControl, basemaps)
 from ipyleaflet.velocity import Velocity
 from ipywidgets import IntSlider, jslink
+
+import utils.plot_folium as pf
 
 
 def retrieve_wind_data(fire_name, year, month, day, hours,
@@ -13,6 +17,7 @@ def retrieve_wind_data(fire_name, year, month, day, hours,
     """Retrieve wind data from Climate Data Store and save to netCDF file.
 
     Args:
+        fire_name (str): name of wildfire
         year (str): year of data to retrieve
         month (str): month of data to retrieve
         day (str): day of data to retrieve
@@ -22,27 +27,28 @@ def retrieve_wind_data(fire_name, year, month, day, hours,
     """
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-    output_file = f"{output_path}wind_data_{fire_name}_{year}_{month}_{day}.nc"
+    out_file = f"{output_path}wind_data_{fire_name}_{year}_{month}_{day}.nc"
 
-    c = cdsapi.Client()
-    c.retrieve(
-        'reanalysis-era5-single-levels',
-        {
-            'product_type': 'reanalysis',
-            'format': 'netcdf',
-            'variable': [
-                '10m_u_component_of_wind',
-                '10m_v_component_of_wind',
-            ],
-            'year': year,
-            'month': month,
-            'day': day,
-            'time': hours,
-            'grid': "2.5/2.5",
-        },
-        output_file,
-    )
-    return output_file
+    if not os.path.exists(out_file):
+        c = cdsapi.Client()
+        c.retrieve(
+            'reanalysis-era5-single-levels',
+            {
+                'product_type': 'reanalysis',
+                'format': 'netcdf',
+                'variable': [
+                    '10m_u_component_of_wind',
+                    '10m_v_component_of_wind',
+                ],
+                'year': year,
+                'month': month,
+                'day': day,
+                'time': hours,
+                'grid': "2.5/2.5",
+            },
+            out_file,
+        )
+    return out_file
 
 
 def open_nc_data(path, **kwargs):
@@ -66,7 +72,8 @@ def reshape_data(ds):
     return ds
 
 
-def create_map(ds, center, zoom=5,
+def create_map(ds, center, choice,
+               zoom=5,
                basemap=basemaps.CartoDB.DarkMatter,
                add_zoom_slider=True,
                add_layers_control=True,
@@ -80,16 +87,28 @@ def create_map(ds, center, zoom=5,
     Args:
         ds (xarray.Dataset): dataset containing wind data
         center (list): center of map in [lat, lon] format
-        zoom (int): zoom level of map
-        basemap (ipyleaflet.basemaps): basemap to use
+        choice (int): choice of land cover layer to add to map
+        zoom (int): zoom level of map. Default is 5.
+        basemap (ipyleaflet.basemaps): basemap to use.
+            Default is `basemaps.CartoDB.DarkMatter`
+        add_zoom_slider (bool): whether to add zoom slider.
+            Default is `True`
+        add_layers_control (bool): whether to add layers control.
+            Default is `True`
+        add_full_screen (bool): whether to add full screen control.
+            Default is `True`
 
     Returns:
-        ipyleaflet.Map: map with wind velocity data
+        geemap.Map: map with wind velocity data
     """
-    m = Map(center=center,
-            zoom=zoom,
-            interpolation='nearest',
-            basemap=basemap)
+    m = geemap.Map(center=center,
+                   zoom=zoom,
+                   interpolation='nearest',
+                   basemap=basemap,
+                   scroll_wheel_zoom=True)
+
+    lc_layer = pf.select_land_cover_data(choice)
+    pf.add_to_map(m, lc_layer, choice)
 
     display_options = {
         'velocityType': 'Global Wind',
@@ -98,16 +117,16 @@ def create_map(ds, center, zoom=5,
     }
 
     # Add winds to the map
-    wind = Velocity(data=ds,
-                    zonal_speed='u10',
-                    meridional_speed='v10',
-                    latitude_dimension='lat',
-                    longitude_dimension='lon',
-                    velocity_scale=0.01,
-                    max_velocity=20,
-                    display_options=display_options,
-                    name='Winds')
-    m.add_layer(wind)
+    wind_data = Velocity(data=ds,
+                         zonal_speed='u10',
+                         meridional_speed='v10',
+                         latitude_dimension='lat',
+                         longitude_dimension='lon',
+                         velocity_scale=0.01,
+                         max_velocity=20,
+                         display_options=display_options,
+                         name='Winds')
+    m.add_layer(wind_data)
 
     # Add marker to indicate wildfire location
     marker = Marker(location=center, draggable=False,
@@ -138,9 +157,10 @@ def save_map(map_, fire_name, output_path='output/maps/'):
     """Save map to html file.
 
     Args:
-        map_ (ipyleaflet.Map): map to save
+        map_ (geemap.Map): map to save
         output_path (str): path to save map to
     """
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-    map_.save(output_path + 'wind_map_' + fire_name + '.html')
+    outfile = f"{output_path}wind_map_{fire_name}.html"
+    map_.to_html(outfile=outfile, title=f"Wind Map for {fire_name}")

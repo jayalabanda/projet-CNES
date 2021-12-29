@@ -3,6 +3,7 @@ import webbrowser
 
 import ee
 import folium
+import geemap
 import numpy as np
 import pandas as pd
 
@@ -136,6 +137,7 @@ def select_land_cover_data(choice):
     Args:
         choice (int): choice of land cover data to be displayed on the map
     """
+    assert choice in [1, 2, 3, 4]
     if choice == 1:
         dat = ee.ImageCollection('MODIS/006/MCD12Q1')
         return dat.select('LC_Type1')
@@ -155,27 +157,46 @@ def add_to_map(map_, dataset, choice):
 
     Args:
         map_ (folium.Map): map to add the land cover data to
-        dataset (ee.Image): land cover data
+        dataset (ee.Image or ee.ImageCollection): land cover data
         choice (int): choice of land cover data
     """
+    assert choice in [1, 2, 3, 4]
     if choice == 1:
-        map_.add_ee_layer(
-            dataset,
-            {'min': 1.0, 'max': 17.0,
-             'palette': ['05450a', '086a10', '54a708', '78d203',
-                         '009900', 'c6b044', 'dcd159', 'dade48',
-                         'fbff13', 'b6ff05', '27ff87', 'c24f44',
-                         'a5a5a5', 'ff6d4c', '69fff8', 'f9ffa4', '1c0dff']},
-            name='MODIS Land Cover')
+        palette = ['05450a', '086a10', '54a708', '78d203',
+                   '009900', 'c6b044', 'dcd159', 'dade48',
+                   'fbff13', 'b6ff05', '27ff87', 'c24f44',
+                   'a5a5a5', 'ff6d4c', '69fff8', 'f9ffa4', '1c0dff']
+        if isinstance(map_, folium.Map):
+            map_.add_ee_layer(
+                dataset,
+                {'min': 1.0, 'max': 17.0, 'palette': palette},
+                name='MODIS Land Cover'
+            )
+        elif isinstance(map_, geemap.Map):
+            map_.addLayer(
+                dataset,
+                {'min': 1.0, 'max': 17.0, 'palette': palette},
+                name='MODIS Land Cover'
+            )
     elif choice == 2:
-        map_.add_ee_layer(dataset, {'bands': ['Map']}, 'ESA World Cover')
+        if isinstance(map_, folium.Map):
+            map_.add_ee_layer(dataset, {'bands': ['Map']}, 'ESA World Cover')
+        elif isinstance(map_, geemap.Map):
+            map_.addLayer(dataset, {'bands': ['Map']}, 'ESA World Cover')
     elif choice == 3:
-        map_.add_ee_layer(dataset, {}, 'Copernicus Global Land Service')
+        if isinstance(map_, folium.Map):
+            map_.add_ee_layer(dataset, {}, 'Copernicus Global Land Service')
+        elif isinstance(map_, geemap.Map):
+            map_.addLayer(dataset, {}, 'Copernicus Global Land Service')
     elif choice == 4:
-        map_.add_ee_layer(dataset, {}, 'Copernicus CORINE Land Cover')
+        if isinstance(map_, folium.Map):
+            map_.add_ee_layer(dataset, {}, 'Copernicus CORINE Land Cover')
+        elif isinstance(map_, geemap.Map):
+            map_.addLayer(dataset, {}, 'Copernicus CORINE Land Cover')
 
 
 def get_legend(choice):
+    assert choice in [1, 2, 3, 4]
     # Image legends are hosted online
     if choice == 1:
         return 'https://i.ibb.co/w0Jhsck/legend-MODIS.png'
@@ -216,6 +237,7 @@ def create_map(fire_name,
         legend (bool): whether to add a floating legend. Default is `True`
     """
     assert 0 < prob <= 1, '`prob` must be between 0 and 1.'
+    assert choice in [1, 2, 3, 4], '`choice` must be 1, 2, 3, or 4.'
     # Add EE drawing method to folium.
     folium.Map.add_ee_layer = add_ee_layer
 
