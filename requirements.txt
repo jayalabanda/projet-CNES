@@ -13,6 +13,7 @@ matplotlib
 seaborn
 folium
 ipyleaflet
+geemap
 
 # geospatial libraries
 rasterio

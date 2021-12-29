@@ -7,7 +7,7 @@ import geemap
 import numpy as np
 import pandas as pd
 
-from folium import plugins
+from ipyleaflet import MarkerCluster
 
 
 def get_coordinates(fire_name):
@@ -24,7 +24,7 @@ def get_coordinates(fire_name):
 
 
 def get_location_list(fire_name, p, seed):
-    """Get the coordinates of the fire to add to the folium map.
+    """Get the coordinates of the fire to add to the geemap map.
 
     Args:
         fire_name (str): name of the fire
@@ -136,6 +136,10 @@ def select_land_cover_data(choice):
 
     Args:
         choice (int): choice of land cover data to be displayed on the map
+
+    Returns:
+        ee_object (ee.Image or ee.ImageCollection): land cover data to be
+        displayed on the map
     """
     assert choice in [1, 2, 3, 4]
     if choice == 1:
@@ -153,46 +157,68 @@ def select_land_cover_data(choice):
 
 
 def add_to_map(map_, dataset, choice):
-    """Add the land cover data to the map.
+    """Add the land cover data to the map. If the map is a geemap map,
+    also add a legend.
 
     Args:
-        map_ (folium.Map): map to add the land cover data to
+        map_ (folium.Map or geemap.Map): map to add the land cover data to
         dataset (ee.Image or ee.ImageCollection): land cover data
         choice (int): choice of land cover data
     """
     assert choice in [1, 2, 3, 4]
-    if choice == 1:
-        palette = ['05450a', '086a10', '54a708', '78d203',
-                   '009900', 'c6b044', 'dcd159', 'dade48',
-                   'fbff13', 'b6ff05', '27ff87', 'c24f44',
-                   'a5a5a5', 'ff6d4c', '69fff8', 'f9ffa4', '1c0dff']
-        if isinstance(map_, folium.Map):
+
+    names = ['MODIS Land Cover',
+             'ESA World Cover',
+             'Copernicus Global Land Service',
+             'Copernicus CORINE Land Cover']
+
+    palette = ['05450a', '086a10', '54a708', '78d203',
+               '009900', 'c6b044', 'dcd159', 'dade48',
+               'fbff13', 'b6ff05', '27ff87', 'c24f44',
+               'a5a5a5', 'ff6d4c', '69fff8', 'f9ffa4', '1c0dff']
+
+    if isinstance(map_, folium.Map):
+        if choice == 1:
             map_.add_ee_layer(
                 dataset,
                 {'min': 1.0, 'max': 17.0, 'palette': palette},
-                name='MODIS Land Cover'
+                names[0]
             )
-        elif isinstance(map_, geemap.Map):
+        elif choice == 2:
+            map_.add_ee_layer(
+                dataset,
+                {'bands': ['Map']},
+                names[1]
+            )
+        elif choice == 3:
+            map_.add_ee_layer(dataset, {}, names[2])
+        elif choice == 4:
+            map_.add_ee_layer(dataset, {}, names[3])
+    elif isinstance(map_, geemap.Map):
+        if choice == 1:
             map_.addLayer(
                 dataset,
                 {'min': 1.0, 'max': 17.0, 'palette': palette},
-                name='MODIS Land Cover'
+                names[0]
             )
-    elif choice == 2:
-        if isinstance(map_, folium.Map):
-            map_.add_ee_layer(dataset, {'bands': ['Map']}, 'ESA World Cover')
-        elif isinstance(map_, geemap.Map):
-            map_.addLayer(dataset, {'bands': ['Map']}, 'ESA World Cover')
-    elif choice == 3:
-        if isinstance(map_, folium.Map):
-            map_.add_ee_layer(dataset, {}, 'Copernicus Global Land Service')
-        elif isinstance(map_, geemap.Map):
-            map_.addLayer(dataset, {}, 'Copernicus Global Land Service')
-    elif choice == 4:
-        if isinstance(map_, folium.Map):
-            map_.add_ee_layer(dataset, {}, 'Copernicus CORINE Land Cover')
-        elif isinstance(map_, geemap.Map):
-            map_.addLayer(dataset, {}, 'Copernicus CORINE Land Cover')
+            map_.add_legend(
+                legend_title=names[0],
+                builtin_legend='MODIS/006/MCD12Q1')
+        elif choice == 2:
+            map_.addLayer(dataset, {'bands': ['Map']}, names[1])
+            map_.add_legend(
+                legend_title=names[1],
+                builtin_legend='ESA_WorldCover')
+        elif choice == 3:
+            map_.addLayer(dataset, {}, names[2])
+            map_.add_legend(
+                legend_title=names[2],
+                builtin_legend='COPERNICUS/Landcover/100m/Proba-V/Global')
+        elif choice == 4:
+            map_.addLayer(dataset, {}, names[3])
+            map_.add_legend(
+                legend_title=names[3],
+                builtin_legend='COPERNICUS/CORINE/V20/100m')
 
 
 def get_legend(choice):
@@ -208,105 +234,102 @@ def get_legend(choice):
         return 'https://i.ibb.co/1sFzhf8/legend-CORINE.png'
 
 
-def create_map(fire_name,
-               prob,
-               seed,
-               choice,
-               cluster=False,
-               fullscreen=True,
-               legend=True):
-    """Create a folium map of the burnt area using `prob` percent of the number
+def create_map(fire_name, prob, seed, choice,
+               zoom=5, cluster=False, minimap=False):
+    """Create a geemap map of the burnt area using `prob` percent of the number
     of coordinates in the fire CSV.
 
     A Google Satellite and Google Maps layers are added to the map,
     along with the selected land cover layer used in the
     `select_land_cover_data` function.
 
-    The map also has a minimap, fullscreen, legend, and layer control options.
+    The map also has a cluster and minimap options.
 
-    For more details on the folium map, see:
-    https://python-visualization.github.io/folium/quickstart.html
+    For more details on the geemap map, see https://geemap.org/get-started/
 
     Args:
         fire_name (str): name of the fire
         prob (float): percentage of coordinates to use in the map
         seed (int): seed used to generate the sampled coordinates
         choice (int): choice of land cover data
+        zoom (int): zoom level of the map. Default is 5
         cluster (bool): whether to cluster the coordinates. Default is `False`
-        fullscreen (bool): whether to add a fullscreen button. Default is `True`
-        legend (bool): whether to add a floating legend. Default is `True`
+        minimap (bool): whether to add a minimap to the map. Default is `False`
+
+    Returns:
+        geemap.Map: map of the burnt area
     """
     assert 0 < prob <= 1, '`prob` must be between 0 and 1.'
     assert choice in [1, 2, 3, 4], '`choice` must be 1, 2, 3, or 4.'
-    # Add EE drawing method to folium.
-    folium.Map.add_ee_layer = add_ee_layer
 
     coordinates = get_coordinates(fire_name)
     center = coordinates.mean(axis=0).to_list()
-    my_map = folium.Map(location=center, zoom_start=12)
+    my_map = geemap.Map(
+        location=center, zoom=zoom,
+        scroll_wheel_zoom=True, add_google_map=False
+    )
 
     location_list = get_location_list(fire_name, prob, seed)
+
     if cluster:
         # Create marker cluster
-        marker_cluster = plugins.MarkerCluster(
-            name="Wildfire Location").add_to(my_map)
-        # Add markers
-        for point in range(len(location_list)):
-            folium.Marker(location_list[point]).add_to(marker_cluster)
+        marker_cluster = MarkerCluster(
+            location_list,
+            name='Wildfire Location',
+        )
+        my_map.add_layer(marker_cluster)
     else:
-        for point in range(len(location_list)):
-            folium.Marker(location_list[point]).add_to(my_map)
+        # Add markers to the map
+        for location in location_list:
+            my_map.add_marker(location=location, draggable=False)
 
     # Add basemaps
-    basemaps = create_basemaps()
-    basemaps['Google Maps'].add_to(my_map)
-    basemaps['Google Satellite Hybrid'].add_to(my_map)
+    my_map.add_basemap('ROADMAP')
+    my_map.add_basemap('HYBRID')
 
     # Add minimap
-    my_map.add_child(plugins.MiniMap())
-
-    if legend:
-        # Add legend
-        leg = get_legend(choice)
-        plugins.FloatImage(leg, bottom=80, left=55).add_to(my_map)
+    if minimap:
+        my_map.add_minimap(zoom=6)
 
     # Add selected land cover
     dataset = select_land_cover_data(choice)
     add_to_map(my_map, dataset, choice)
 
     # Add a layer control panel to the map.
-    my_map.add_child(folium.LayerControl())
+    my_map.add_layer_control()
 
-    if fullscreen:
-        # Add fullscreen button
-        plugins.Fullscreen().add_to(my_map)
-
-    # Display the map.
-    # my_map
     return my_map
 
 
-def save_map(map_, fire_name, output_folder):
+def save_map(map_, fire_name, output_folder, wind=False):
     """Save the map to an HTML file.
 
     Args:
-        map_ (folium.Map): map to save
+        map_ (geemap.Map): map to save
         fire_name (str): name of the fire
         output_folder (str): folder to save the map to
     """
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    filename = f'{output_folder}map_{fire_name}.html'
-    map_.save(filename)
+    if wind:
+        filename = f'{output_folder}wind_map_{fire_name}.html'
+        title = f'Wind Map for {fire_name}'
+    else:
+        filename = f'{output_folder}map_{fire_name}.html'
+        title = f'Coordinates Map for {fire_name}'
+    map_.to_html(outfile=filename, title=title)
 
 
-def open_map(fire_name, output_folder):
+def open_map(fire_name, output_folder, wind=False):
     """Open the HTML file from the map in a web browser.
 
     Args:
         fire_name (str): name of the fire
         output_folder (str): folder where the HTML file is saved
     """
-    filename = f'{output_folder}map_{fire_name}.html'
+    if wind:
+        filename = f'{output_folder}wind_map_{fire_name}.html'
+    else:
+        filename = f'{output_folder}map_{fire_name}.html'
     webbrowser.open_new_tab('file://' + os.path.realpath(filename))

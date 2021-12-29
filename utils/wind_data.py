@@ -4,12 +4,10 @@ import cdsapi
 import geemap
 import xarray as xr
 
-from ipyleaflet import (FullScreenControl, LayersControl, Marker,
-                        WidgetControl, basemaps)
+from ipyleaflet import Marker, basemaps
 from ipyleaflet.velocity import Velocity
-from ipywidgets import IntSlider, jslink
 
-import utils.plot_folium as pf
+import utils.plot_map as pm
 
 
 def retrieve_wind_data(fire_name, year, month, day, hours,
@@ -74,10 +72,7 @@ def reshape_data(ds):
 
 def create_map(ds, center, choice,
                zoom=5,
-               basemap=basemaps.CartoDB.DarkMatter,
-               add_zoom_slider=True,
-               add_layers_control=True,
-               add_full_screen=True,):
+               basemap=basemaps.CartoDB.DarkMatter):
     """Create map with wind velocity data.
 
     The map can be fully customized. Please refer to the
@@ -95,20 +90,15 @@ def create_map(ds, center, choice,
             Default is `True`
         add_layers_control (bool): whether to add layers control.
             Default is `True`
-        add_full_screen (bool): whether to add full screen control.
-            Default is `True`
 
     Returns:
         geemap.Map: map with wind velocity data
     """
-    m = geemap.Map(center=center,
-                   zoom=zoom,
-                   interpolation='nearest',
-                   basemap=basemap,
-                   scroll_wheel_zoom=True)
-
-    lc_layer = pf.select_land_cover_data(choice)
-    pf.add_to_map(m, lc_layer, choice)
+    my_map = geemap.Map(center=center,
+                        zoom=zoom,
+                        interpolation='nearest',
+                        basemap=basemap,
+                        scroll_wheel_zoom=True)
 
     display_options = {
         'velocityType': 'Global Wind',
@@ -122,45 +112,22 @@ def create_map(ds, center, choice,
                          meridional_speed='v10',
                          latitude_dimension='lat',
                          longitude_dimension='lon',
-                         velocity_scale=0.01,
+                         velocity_scale=0.02,
                          max_velocity=20,
                          display_options=display_options,
                          name='Winds')
-    m.add_layer(wind_data)
+    my_map.add_layer(wind_data)
 
     # Add marker to indicate wildfire location
     marker = Marker(location=center, draggable=False,
                     name="Location of Wildfire")
-    m.add_layer(marker)
+    my_map.add_layer(marker)
 
-    # Add zoom slider
-    if add_zoom_slider:
-        zoom_slider = IntSlider(description='Zoom level:',
-                                min=0, max=15, value=zoom)
-        jslink((zoom_slider, 'value'), (m, 'zoom'))
-        widget_control1 = WidgetControl(
-            widget=zoom_slider, position='topright')
-        m.add_control(widget_control1)
+    # Add selected land cover
+    lc_layer = pm.select_land_cover_data(choice)
+    pm.add_to_map(my_map, lc_layer, choice)
 
-    # Add fullscreen control
-    if add_full_screen:
-        m.add_control(FullScreenControl())
+    # Add a layer control panel to the map.
+    my_map.add_layer_control()
 
-    # Add layer control
-    if add_layers_control:
-        m.add_control(LayersControl(position='topright'))
-
-    return m
-
-
-def save_map(map_, fire_name, output_path='output/maps/'):
-    """Save map to html file.
-
-    Args:
-        map_ (geemap.Map): map to save
-        output_path (str): path to save map to
-    """
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-    outfile = f"{output_path}wind_map_{fire_name}.html"
-    map_.to_html(outfile=outfile, title=f"Wind Map for {fire_name}")
+    return my_map

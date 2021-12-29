@@ -6,40 +6,38 @@ import ee
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
+from ipyleaflet import basemap_to_tiles, basemaps
 from sentinelsat import SentinelAPI
 from skimage.morphology import area_closing
 
 import utils.data_collection as dc
 import utils.image_processing as ip
 import utils.land_coverage as land_c
-import utils.plot_folium as pf
-import utils.terminal_interface as term
-
+import utils.plot_map as pm
 import utils.wind_data as wind
-from ipyleaflet import basemaps, basemap_to_tiles
+
+
+def clear_screen():
+    """Clears the terminal."""
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 
 ###############################################################################
 # SETUP
 ###############################################################################
-input("Welcome to the Sentinel data collection and analysis tool! (Press enter to continue)")
-term.clear_screen()
+
+print("Welcome to the Sentinel data collection and analysis tool!")
+input("Please press enter to continue.")
+clear_screen()
 print("1. Setup")
 
-while True:
-    try:
-        authenticated = input("Authenticate with Earth Engine? (y/n): ")
-        if authenticated == "y":
-            ee.Authenticate()
-            break
-        elif authenticated == "n":
-            break
-        else:
-            raise ValueError("Invalid input")
-    except ValueError:
-        print("Please enter 'y' or 'n'.")
-ee.Initialize()
+# If you have never authenticated, this will raise an exception
+# and prompt you to authenticate. You only need to do this once.
+try:
+    ee.Initialize()
+except Exception as e:
+    ee.Authenticate()
+    ee.Initialize()
 
 # Name of the place where the fire is located
 try:
@@ -51,48 +49,58 @@ except ValueError:
 PATH = f'data/{FIRE_NAME}/'
 # Path to the folders where the TIFF, PNG, and GIF files will be stored
 OUTPUT_FOLDER = f"output/{FIRE_NAME}/"
+
 input("Press enter to proceed.")
-temp.clear_screen()
+clear_screen()
+
+
 ###############################################################################
 # WILDFIRE INFORMATION
 ###############################################################################
+
 print("2. Wildfire Information")
 
 with open(f"data/info_fires/info_{FIRE_NAME}.json") as f:
     fire_info = json.load(f)
-print("Retrieving date, coordinates and burnt area from json file...", end='')
+
+print("Retrieving date, coordinates and burnt area from JSON file.", end='')
+
 # Date of the fire
 WILDFIRE_DATE = dt.datetime.strptime(fire_info["wildfire_date"], "%Y-%m-%d")
 # Coordinates of the fire
 LATITUDE, LONGITUDE = fire_info["latitude"], fire_info["longitude"]
 # Actual area in hectares that burned. We retrieved the area on the news
 TRUE_AREA = fire_info["true_area"]
+
 print("Done!")
 print("Accessing GeoJSON file and API credentials...", end='')
+
 # Path to the GeoJSON file
 GEOJSON_PATH = f"data/geojson_files/{FIRE_NAME}.geojson"
 # Path to the JSON file where the Sentinel API credentials are stored
 CREDENTIALS_PATH = "secrets/sentinel_api_credentials.json"
-print("Done!")
 
+print("Done!")
 input("Press enter to proceed.")
-temp.clear_screen()
+clear_screen()
+
 
 ###############################################################################
 # FILE CONSTANTS
 ###############################################################################
+
 print("3. File Constants")
 
 # Number of days both before and after the fire to get images
 OBSERVATION_INTERVAL = 15
-print("Number of days both before and after the fire to get images" + str(OBSERVATION_INTERVAL))
+print(f"Number of days both before and after the fire: {OBSERVATION_INTERVAL}")
 
 # Resolution of the images (10m, 20m, or 60m)
 RESOLUTION = 10
-print("Resolution of the images: " + str(RESOLUTION) + "m")
+print(f"Resolution of the images: {RESOLUTION} m")
 # Threshold for the cloud cover (between 0 and 100)
 CLOUD_THRESHOLD = 40
-print("Threshold for the cloud cover: " + str(CLOUD_THRESHOLD) + "%")
+print(f"Threshold for the cloud cover: {CLOUD_THRESHOLD}%")
 
 # Seed for random number generator (for reproductibility)
 SEED = 42
@@ -101,9 +109,10 @@ THRESHOLDS = np.arange(0.1, 0.41, 0.02)
 # Number of coordinates to use for the pie charts
 SAMPLES = np.arange(50, 1001, 50)
 
-print("If you are not satisfied with the values, you can change them in the code.")
+print("If you are not satisfied with the values, you can change them here.")
 input("Press enter to continue.")
-term.clear_screen()
+clear_screen()
+
 
 ###############################################################################
 # DATA COLLECTION
@@ -119,7 +128,7 @@ api = SentinelAPI(
 
 if not os.path.exists(PATH):
     os.makedirs(PATH)
-    
+
 if not dc.check_downloaded_data(PATH, OUTPUT_FOLDER, FIRE_NAME):
     try:
         dc.get_before_after_images(
@@ -136,7 +145,8 @@ if not dc.check_downloaded_data(PATH, OUTPUT_FOLDER, FIRE_NAME):
     except Exception as e:
         print(e)
         exit()
-        
+
+
 ###############################################################################
 # IMAGE PROCESSING
 ###############################################################################
@@ -149,7 +159,6 @@ print(img_folder)
 pixel_column, pixel_row = ip.get_fire_pixels(
     img_folder, LATITUDE, LONGITUDE
 )
-
 print(f'The fire is located at pixels ({pixel_column}, {pixel_row}).\n')
 
 diff = dc.plot_ndvi_difference(
@@ -164,6 +173,7 @@ fire, hline_1, vline_1 = ip.retrieve_fire_area(
     diff, pixel_column, pixel_row, 'Fire Area'
 )
 
+
 ###############################################################################
 # WILDFIRE AREA
 ###############################################################################
@@ -173,8 +183,7 @@ for thr in THRESHOLDS:
     tmp = ip.threshold_filter(fire, thr)
     area = round(ip.calculate_area(tmp, diff) * 100, 4)
     areas.append(area)
-    
-import seaborn as sns
+
 
 plt.figure(figsize=(8, 6))
 with sns.axes_style('darkgrid'):
@@ -186,7 +195,7 @@ with sns.axes_style('darkgrid'):
     plt.title('Fire Area')
     plt.legend(['Calculated Area', 'True Value'])
     plt.show()
-    
+
 while True:
     threshold = float(input('Enter a threshold value between -1 and 1: '))
     try:
@@ -196,7 +205,7 @@ while True:
             print('Please enter a value between -1 and 1.')
     except ValueError:
         print('Please enter a valid number.')
-        
+
 
 tmp = ip.threshold_filter(fire, threshold)
 plt.figure(figsize=(8, 6))
@@ -206,16 +215,20 @@ plt.show()
 print('Calculated area:', round(ip.calculate_area(tmp, diff) * 100, 4), 'ha.')
 print(f'The true area that burned is {TRUE_AREA} hectares.\n')
 
-fire = tmp.copy()
 
 ###############################################################################
 # MORPHOLOGY
 ###############################################################################
 
-closed = area_closing(fire)
-ip.plot_comparison(fire, closed, 'Area Closing')
+closed = area_closing(tmp)
+ip.plot_comparison(tmp, closed, 'Area Closing')
 
-print('Area after morphology:', round(ip.calculate_area(closed, diff) * 100, 4), 'ha.')
+print('Area after morphology:',
+      round(ip.calculate_area(closed, diff) * 100, 4), 'ha.')
+
+fire = closed.copy()
+del tmp, closed
+
 
 ###############################################################################
 # LAND COVER CLASSIFICATION
@@ -272,18 +285,19 @@ land_c.make_pie_chart_gif(
 
 land_c.open_gif(FIRE_NAME, output_folder)
 
-import base64
-from IPython import display
+# import base64
+# from IPython import display
 
-def show_gif(fname):
-    with open(fname, 'rb') as fd:
-        b64 = base64.b64encode(fd.read()).decode('ascii')
-    return display.HTML(f'<img src="data:image/gif;base64,{b64}" />')
+# def show_gif(fname):
+#     with open(fname, 'rb') as fd:
+#         b64 = base64.b64encode(fd.read()).decode('ascii')
+#     return display.HTML(f'<img src="data:image/gif;base64,{b64}" />')
 
-show_gif('output/pie_chart_' + FIRE_NAME + '/' + FIRE_NAME + '.gif')
+# show_gif('output/pie_chart_' + FIRE_NAME + '/' + FIRE_NAME + '.gif')
+
 
 ###############################################################################
-# CREATE FOLIUM MAP
+# CREATE GEEMAP MAP
 ###############################################################################
 
 while True:
@@ -296,14 +310,16 @@ while True:
             raise ValueError
     except ValueError:
         print('Please enter a valid number.')
-        
-fire_map = pf.create_map(FIRE_NAME, prob, SEED, choice)
+
+fire_map = pm.create_map(FIRE_NAME, prob, SEED, choice)
 
 output_maps = "output/maps/"
 if not os.path.exists(output_maps):
     os.makedirs(output_maps)
-pf.save_map(fire_map, FIRE_NAME, output_maps)
-pf.open_map(FIRE_NAME, output_maps)
+
+pm.save_map(fire_map, FIRE_NAME, output_maps)
+pm.open_map(FIRE_NAME, output_maps)
+
 
 ###############################################################################
 # WIND DATA
@@ -330,4 +346,6 @@ m = wind.create_map(
 )
 
 m.add_layer(basemap_to_tiles(basemaps.CartoDB.DarkMatter))
+
 wind.save_map(m, FIRE_NAME)
+pm.open_map(FIRE_NAME, output_maps)

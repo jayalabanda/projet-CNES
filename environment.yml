@@ -9,6 +9,7 @@ dependencies:
   - pandas
   - matplotlib
   - folium
+  - geemap
   - pillow
   - geopandas
   - sentinelsat
@@ -26,6 +27,5 @@ dependencies:
   - netcdf4
   - beautifulsoup4
   - ipyleaflet
-  - cdsapi
   - pywin32=225
   - rtree=0.9.3
