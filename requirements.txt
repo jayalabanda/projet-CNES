@@ -33,6 +33,6 @@ scikit-image
 notebook
 beautifulsoup4
 rtree==0.9.3
-pywin32==225
+pywin32==301
 dask
 bottleneck
