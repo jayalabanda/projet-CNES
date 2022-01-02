@@ -43,7 +43,8 @@ def create_sample_coordinates(image, seed=None, p=0.01):
 
     Args:
         image (image): image from which the coordinates are sampled
-        seed (int, optional): seed for the random number generator. Defaults to `None`.
+        seed (int, optional): seed for the random number generator.
+        Default is `None`
         p (float, optional): Sampling rate. Defaults to 0.01.
 
     Returns:
@@ -66,7 +67,8 @@ def get_coordinates_from_pixels(img, h, v, img_folder, fire_name):
      Args:
          img (image): image from which the coordinates are retrieved
          h, v (int): horizontal and vertical offsets
-         img_folder (string): path to the folder where the image is retrieved from
+         img_folder (string): path to the folder where
+         the JP2 file is stored
 
      Returns:
          coordinates: list of coordinate tuples (latitude, longitude)
@@ -102,6 +104,7 @@ def get_coordinates_from_pixels(img, h, v, img_folder, fire_name):
 
 
 def get_choice():
+    """Get the user's choice for the land cover data."""
     while True:
         try:
             print(
@@ -123,7 +126,9 @@ def select_land_cover_data(choice):
     elif choice == 2:
         return ee.ImageCollection("ESA/WorldCover/v100")
     elif choice == 3:
-        return ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019").select('discrete_classification')
+        return ee.Image(
+            "COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019").select(
+                'discrete_classification')
     elif choice == 4:
         return ee.Image("COPERNICUS/CORINE/V20/100m/2018")
 
@@ -131,27 +136,35 @@ def select_land_cover_data(choice):
 def get_lc_urban_point(lc, choice, u_poi, scale):
     # MODIS Land Cover
     if choice == 1:
-        return lc.first().sample(u_poi, scale).first().get('LC_Type1').getInfo()
+        return lc.first().sample(u_poi, scale).first().get(
+            'LC_Type1').getInfo()
     # ESA World Cover
     elif choice == 2:
-        return lc.first().sample(u_poi, scale).first().getInfo()['properties']['Map']
+        return lc.first().sample(u_poi, scale).first().getInfo()[
+            'properties']['Map']
     # Copernicus Global Land Service
     elif choice == 3:
-        return lc.sample(u_poi, scale).first().getInfo()['properties']['discrete_classification']
+        return lc.sample(u_poi, scale).first().getInfo()[
+            'properties']['discrete_classification']
     # Copernicus CORINE Land Cover
     elif choice == 4:
-        return lc.sample(u_poi, scale).first().getInfo()['properties']['landcover']
+        return lc.sample(u_poi, scale).first().getInfo()[
+            'properties']['landcover']
 
 
 def get_land_cover_dataframe(choice):
     if choice == 1:
-        return pd.read_csv('data/MODIS_LandCover_Type1.csv')
+        return pd.read_csv(
+            'data/MODIS_LandCover_Type1.csv')
     elif choice == 2:
-        return pd.read_csv('data/ESA_WorldCover_10m_v100.csv')
+        return pd.read_csv(
+            'data/ESA_WorldCover_10m_v100.csv')
     elif choice == 3:
-        return pd.read_csv('data/Copernicus_Landcover_100m_Proba-V-C3_Global.csv')
+        return pd.read_csv(
+            'data/Copernicus_Landcover_100m_Proba-V-C3_Global.csv')
     elif choice == 4:
-        return pd.read_csv('data/Copernicus_CORINE_Land_Cover.csv')
+        return pd.read_csv(
+            'data/Copernicus_CORINE_Land_Cover.csv')
 
 
 def get_land_cover_data(coords_data, choice, size, seed=None):
@@ -163,7 +176,8 @@ def get_land_cover_data(coords_data, choice, size, seed=None):
     Args:
         coords_data (list): list of coordinate tuples (latitude, longitude)
         size (int): number of points to be sampled from the fire
-        seed (int, optional): seed for the random number generator. Defaults to `None`
+        seed (int, optional): seed for the random number generator.
+        Default is `None`
 
     Returns:
         cover_data (dict): dictionary with the land cover data
@@ -186,7 +200,7 @@ def get_land_cover_data(coords_data, choice, size, seed=None):
             lc_urban_point = get_lc_urban_point(lc, choice, u_poi, scale)
             cover_data.append(lc_urban_point)
         except:
-            print('Error with Earth Engine. Land cover could not be retrieved.')
+            print('Error with Earth Engine. Land cover could not be found.')
 
     if None in cover_data:
         cover_data = [i for i in cover_data if i]  # remove None values
@@ -200,11 +214,13 @@ def get_land_cover_data(coords_data, choice, size, seed=None):
 def get_labels_colors(cover_data, land_cover_data):
     """Retrieves the labels and colors for the pie chart.
 
-    The land cover data is a dataframe with columns `Value`, `Color`, and `Description`.
+    The land cover data is a dataframe with columns `Value`,
+    `Color`, and `Description`.
 
     Args:
         cover_data (dict): dictionary with the land cover data
-        land_cover_data (dataframe): dataframe with the colors by type of land coverage
+        land_cover_data (dataframe): dataframe with the colors by type of
+        land coverage
 
     Returns:
         labels: labels for the pie chart
@@ -271,8 +287,10 @@ def create_plots(samples, coordinates, choice, seed=None, **kwargs):
     Args:
         samples (list): list of samples to be drawn
         coordinates (dataframe): dataframe of coordinates
-        land_cover_data (dataframe): dataframe with colors and descriptions of land coverage
-        seed (int): seed for the random number generator. Defaults to `None`
+        land_cover_data (dataframe): dataframe with colors
+        and descriptionsof land coverage
+        seed (int): seed for the random number generator.
+        Default is `None`
         **kwargs: keyword arguments for the `plot_pie_chart` function
     """
     land_cover_dataframe = get_land_cover_dataframe(choice)
@@ -298,7 +316,8 @@ def make_pie_chart_gif(fire_name, file_path=None, **kwargs):
     """Makes a gif from the PNG images in the file_path.
 
     The filenames must be in format 'pie_*.png'
-    where '*' is the number of points sampled from the fire using the `create_plots` function.
+    where '*' is the number of points sampled from the fire using the
+    `create_plots` function.
 
     This assumes that the PNG files are saved using the `save_fig` parameter.
 

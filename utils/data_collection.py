@@ -16,34 +16,39 @@ def get_band(image_folder, band, resolution):
     The relevant images are inside 'GRANULE/.../IMG_DATA/'
 
     Args:
-        image_folder (path): path to the folder containing the image
-        band (string): band to be extracted. Can be `'B01'`, `'B02'`, for example
-        resolution (int): resolution of the image. Defaults to 10.
+        image_folder (str): path to the folder containing the image
+        band (string): band to be extracted. Can be `'B01'`, `'B02'`,
+        `B03` for example
+        resolution (int): resolution of the image. Default is 10. Other
+        choices are 20 and 60
 
     Returns:
         path to the JP2 image (str)
     """
     subfolder = [f for f in os.listdir(image_folder + "/GRANULE/")
                  if f[0] == "L"][0]
-    image_folder_path = f"{image_folder}/GRANULE/{subfolder}/IMG_DATA/R{resolution}m"
+    image_folder_path = image_folder + "/GRANULE/" + subfolder +\
+        "/IMG_DATA/" + f"R{resolution}m"
     image_files = [im for im in os.listdir(image_folder_path)
                    if im[-4:] == ".jp2"]
 
-    # retrieve jp2 image file
+    # retrieve path to JP2 image file
     selected_file = [im for im in image_files
                      if im.split("_")[2] == band][0]
     return image_folder_path + "/" + selected_file
 
 
-def get_dataframe_between_dates(api, date1, date2, geojson_path, cloud_threshold=40):
-    """Retrieve a dataframe containing all the information between two dates.
+def get_dataframe_between_dates(api, date1, date2, geojson_path,
+                                cloud_threshold=40):
+    """Retrieve a dataframe containing all the information
+    between two dates.
 
     Args:
         api (SentinelAPI): API object
         date1 (datetime): date of the first observation
         date2 (datetime): date of the second observation
         geojson_path (string): path to the geojson file
-        cloud_threshold (float): threshold for cloud coverage. Defaults to 40
+        cloud_threshold (float): threshold for cloud coverage. Default is 40
 
     Returns:
         a dataframe with information about the images between the two dates
@@ -59,7 +64,7 @@ def get_dataframe_between_dates(api, date1, date2, geojson_path, cloud_threshold
 
     images_df = api.to_dataframe(images)
     print("Retrieved dataframe.")
-    print(f"Number of images between {date1} and {date2}: {len(images_df)}.\n")
+    print(f"Number of images between {date1} and {date2}: {len(images_df)}.")
     return images_df
 
 
@@ -67,7 +72,8 @@ def minimize_dataframe(df):
     """Creates a score for the dataframe using a weighted average of
     cloud cover, vegetation cover, and water presence.
 
-    More vegetation is better, and less water presence and fewer clouds is better.
+    More vegetation is better, and less water presence and
+    fewer clouds is better.
 
     Note that the coefficients are arbitrary but allow for
     giving more importance to the vegetation.
@@ -156,14 +162,16 @@ def get_uuid_title(df):
     return uuid, title
 
 
-def download_from_api(api, uuid, title, path='./data/'):
-    """Download the image from the API, unzips the folder, and deletes the zip file.
+def download_from_api(api, uuid, title, path='data/'):
+    """Download the image from the API, unzips the folder,
+    and deletes the zip file.
 
     Args:
         api (SentinelAPI): API object
         uuid (string): uuid of the image
-        title (string): title of the image (named column in the dataframe)
-        path (string): path to save the image. Defaults to '`./data/'`
+        title (string): title of the image (named column
+        in the dataframe)
+        path (string): path to save the image. Default is '`data/'`
     """
     if not os.path.exists(path):
         os.makedirs(path)
@@ -234,11 +242,12 @@ def create_ndvi_tiff_image(path, when, fire_name, output_folder='output/'):
     This function creates the TIFF image. Be mindful of the size of the file.
 
     Args:
-        path (string): path to save the TIFF file
-        when (string): name of the TIFF file. It defaults to `'before'` or `'after'`
-            according to the date retrieved from the API
+        path (string): path to the JP2 files
+        when (string): name of the TIFF file. It defaults to `'before'` or
+        `'after'` according to the date retrieved from the API
         fire_name (string): name of the fire
-        output_folder (string): path to save the TIFF file. Defaults to `'output/'`
+        output_folder (string): path to save the TIFF file.
+        Default is `'output/'`
 
     Returns:
         image: opened image with the given uuid
@@ -277,15 +286,18 @@ def get_image(api, wildfire_date, observation_interval,
 
     Args:
         api (SentinelAPI): API object
-        wildfire_date (string): date of the wildfire
+        wildfire_date (datetime): date of the wildfire
         observation_interval (int): interval of observation in days
         path (string): path to save the image. Defaults to `'./data/'`
         when (string): name of the TIFF file, either `'before'` or `'after'`
+
         **kwargs: keyword arguments are:
-            - geojson_path (string): path to the geojson file
-            - cloud_threshold (int): threshold for cloud cover. Defaults to 40.
-            - output_folder (string): path to save the TIFF file. Defaults to `'output/'`
-            - fire_name (string): name of the TIFF file.
+            geojson_path (string): path to the geojson file
+            cloud_threshold (int): threshold for cloud cover.
+            Default is 40
+            output_folder (string): path to save the TIFF file.
+            Default is `'output/'`
+            fire_name (string): name of the TIFF file.
     """
     if when not in ['before', 'after']:
         raise ValueError(
@@ -293,15 +305,13 @@ def get_image(api, wildfire_date, observation_interval,
         )
 
     if when == 'before':
-        # create dates around the wildfire
-        # before_date = wildfire_date - dt.timedelta(days=1)
+        # create dates around the wildfire date
         before_date_delta = wildfire_date - \
             dt.timedelta(days=observation_interval)
 
         df = get_dataframe_between_dates(
             api,
             before_date_delta,
-            # before_date,
             wildfire_date,
             geojson_path=kwargs['geojson_path'],
             cloud_threshold=kwargs['cloud_threshold'],
@@ -345,7 +355,8 @@ def get_before_after_images(**kwargs):
     get_image(when='after', **kwargs)
 
 
-def plot_ndvi_difference(output_folder, fire_name, save_diff=False, figsize=(8, 8)):
+def plot_ndvi_difference(output_folder, fire_name,
+                         save_diff=False, figsize=(12, 8)):
     """Plots and returns the NDVI difference between the images.
 
     Args:
@@ -387,7 +398,7 @@ def check_downloaded_data(path, output_folder, fire_name):
         output_folder (str): path to the folder where the images are stored
 
     Returns:
-        bool: True if the data is downloaded, False otherwise
+        bool: `True` if the data is downloaded, `False` otherwise
     """
     dirs = os.listdir(path)
     dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]

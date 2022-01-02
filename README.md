@@ -182,5 +182,5 @@ To-do list:
 
 * [ ] create convex hull figures from fire coordinates
 * [ ] continue working on [main.py](main.py)
-* [ ] clean and test new scripts inside [utils](utils/) folder
+* [x] clean and test new scripts inside [utils](utils/) folder
 * [ ] make the process as automatic as possible

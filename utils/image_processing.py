@@ -197,7 +197,7 @@ def threshold_filter(image, threshold):
         threshold (float): threshold value
 
     Returns:
-        image: image where all values below `threshold` are set to 0
+        image: image with all values below `threshold` set to 0
     """
     temp = image.copy()
     temp[temp < threshold] = 0
@@ -211,7 +211,7 @@ def calculate_area(sub_image, original_image, resolution=10):
         sub_image: already imported image after thresholding
         original_image: tiff image obtained from the API
         resolution (int): resolution of the image. Defaults to 10
-            (10 means 1 pixel = 10m, etc.)
+        (10 means 1 pixel = 10m, etc.)
 
     Returns:
         area: area of the image in squared kilometers
@@ -276,7 +276,7 @@ def merge_images(n_images, images, horizontal=True):
     """
     if n_images != len(images):
         raise ValueError(
-            "Number of images must be equal to the length of the image array.")
+            "Number of images must equal the length of the image array.")
 
     if n_images == 2:
         return merge_two_images(images, horizontal)
@@ -288,7 +288,6 @@ def merge_images(n_images, images, horizontal=True):
 
 def plot_comparison(original, filtered, filter_name):
     """Plots the original and filtered images side by side.
-
     This function is used when comparing skimage's `morphology` methods.
 
     Args:

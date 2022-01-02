@@ -46,6 +46,8 @@ def retrieve_wind_data(fire_name, year, month, day, hours,
             },
             out_file,
         )
+    else:
+        print(f"{out_file} already exists.")
     return out_file
 
 
@@ -55,6 +57,9 @@ def open_nc_data(path, **kwargs):
     Args:
         path (str): path to netCDF file
         **kwargs: keyword arguments to pass to `xarray.open_dataset`
+
+    Returns:
+        xarray.Dataset: opened dataset containing wind data
     """
     return xr.open_dataset(path, **kwargs)
 
@@ -64,6 +69,9 @@ def reshape_data(ds):
 
     Args:
         ds (xarray.Dataset): dataset containing wind data
+
+    Returns:
+        xarray.Dataset: reshaped dataset
     """
     ds = ds.isel(time=0)
     ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})

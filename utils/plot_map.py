@@ -74,7 +74,8 @@ def create_basemaps():
             control=True,
         ),
         'Esri Satellite': folium.TileLayer(
-            tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            tiles='https://server.arcgisonline.com/ArcGIS/rest/\
+                services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             attr='Esri',
             name='Esri Satellite',
             overlay=True,
@@ -84,7 +85,9 @@ def create_basemaps():
 
 
 def add_ee_layer(self, ee_object, vis_params, name):
-    """Define a method for displaying Earth Engine image tiles on a folium map."""
+    """Define a method for displaying Earth Engine image tiles
+    on a folium map.
+    """
     try:
         # display ee.Image()
         if isinstance(ee_object, ee.image.Image):
@@ -222,6 +225,7 @@ def add_to_map(map_, dataset, choice):
 
 
 def get_legend(choice):
+    """Get the legend for the land cover data."""
     assert choice in [1, 2, 3, 4]
     # Image legends are hosted online
     if choice == 1:
@@ -236,8 +240,8 @@ def get_legend(choice):
 
 def create_map(fire_name, prob, seed, choice,
                zoom=5, cluster=False, minimap=False):
-    """Create a geemap map of the burnt area using `prob` percent of the number
-    of coordinates in the fire CSV.
+    """Create a geemap map of the burnt area using `prob` percent of
+    the number of coordinates in the fire CSV.
 
     A Google Satellite and Google Maps layers are added to the map,
     along with the selected land cover layer used in the
@@ -253,8 +257,10 @@ def create_map(fire_name, prob, seed, choice,
         seed (int): seed used to generate the sampled coordinates
         choice (int): choice of land cover data
         zoom (int): zoom level of the map. Default is 5
-        cluster (bool): whether to cluster the coordinates. Default is `False`
-        minimap (bool): whether to add a minimap to the map. Default is `False`
+        cluster (bool): whether to cluster the coordinates.
+        Default is `False`
+        minimap (bool): whether to add a minimap to the map.
+        Default is `False`
 
     Returns:
         geemap.Map: map of the burnt area

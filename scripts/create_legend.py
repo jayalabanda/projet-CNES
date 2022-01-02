@@ -1,7 +1,7 @@
 # This script creates a figure to retrieve the legend for the
 # assciated land cover values in each dataframe.
 # For example, the value '10' in the ESA dataframe is associated with
-# the color '#006400' in the legend and corresponds to the value 'Trees'
+# the color '#006400' in the legend and corresponds to 'Trees'
 
 import matplotlib.colors as mplcols
 import matplotlib.pyplot as plt
