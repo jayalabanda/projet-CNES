@@ -3,7 +3,6 @@ import os
 import cdsapi
 import geemap
 import xarray as xr
-
 from ipyleaflet import Marker, basemaps
 from ipyleaflet.velocity import Velocity
 
@@ -47,7 +46,7 @@ def retrieve_wind_data(fire_name, year, month, day, hours,
             out_file,
         )
     else:
-        print(f"{out_file} already exists.")
+        print('File already exists.')
     return out_file
 
 
@@ -73,8 +72,13 @@ def reshape_data(ds):
     Returns:
         xarray.Dataset: reshaped dataset
     """
+    if ds['time'].shape != (1,):
+        vals = list(ds['time'].values.astype(str))
+        vals = [v[11:13] for v in vals]
+        if '12' in vals:
+            ds = ds.isel(time=12)
+            return ds
     ds = ds.isel(time=0)
-    ds = ds.rename({'longitude': 'lon', 'latitude': 'lat'})
     return ds
 
 
@@ -118,8 +122,8 @@ def create_map(ds, center, choice,
     wind_data = Velocity(data=ds,
                          zonal_speed='u10',
                          meridional_speed='v10',
-                         latitude_dimension='lat',
-                         longitude_dimension='lon',
+                         latitude_dimension='latitude',
+                         longitude_dimension='longitude',
                          velocity_scale=0.02,
                          max_velocity=20,
                          display_options=display_options,

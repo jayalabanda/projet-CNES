@@ -6,8 +6,8 @@ import folium
 import geemap
 import numpy as np
 import pandas as pd
-
-from ipyleaflet import MarkerCluster
+from ipyleaflet import Marker, MarkerCluster
+from ipyleaflet.leaflet import LayerGroup
 
 
 def get_coordinates(fire_name):
@@ -144,7 +144,6 @@ def select_land_cover_data(choice):
         ee_object (ee.Image or ee.ImageCollection): land cover data to be
         displayed on the map
     """
-    assert choice in [1, 2, 3, 4]
     if choice == 1:
         dat = ee.ImageCollection('MODIS/006/MCD12Q1')
         return dat.select('LC_Type1')
@@ -168,65 +167,38 @@ def add_to_map(map_, dataset, choice):
         dataset (ee.Image or ee.ImageCollection): land cover data
         choice (int): choice of land cover data
     """
-    assert choice in [1, 2, 3, 4]
-
-    names = ['MODIS Land Cover',
-             'ESA World Cover',
-             'Copernicus Global Land Service',
-             'Copernicus CORINE Land Cover']
-
-    palette = ['05450a', '086a10', '54a708', '78d203',
-               '009900', 'c6b044', 'dcd159', 'dade48',
-               'fbff13', 'b6ff05', '27ff87', 'c24f44',
-               'a5a5a5', 'ff6d4c', '69fff8', 'f9ffa4', '1c0dff']
-
-    if isinstance(map_, folium.Map):
-        if choice == 1:
-            map_.add_ee_layer(
-                dataset,
-                {'min': 1.0, 'max': 17.0, 'palette': palette},
-                names[0]
-            )
-        elif choice == 2:
-            map_.add_ee_layer(
-                dataset,
-                {'bands': ['Map']},
-                names[1]
-            )
-        elif choice == 3:
-            map_.add_ee_layer(dataset, {}, names[2])
-        elif choice == 4:
-            map_.add_ee_layer(dataset, {}, names[3])
-    elif isinstance(map_, geemap.Map):
-        if choice == 1:
-            map_.addLayer(
-                dataset,
-                {'min': 1.0, 'max': 17.0, 'palette': palette},
-                names[0]
-            )
-            map_.add_legend(
-                legend_title=names[0],
-                builtin_legend='MODIS/006/MCD12Q1')
-        elif choice == 2:
-            map_.addLayer(dataset, {'bands': ['Map']}, names[1])
-            map_.add_legend(
-                legend_title=names[1],
-                builtin_legend='ESA_WorldCover')
-        elif choice == 3:
-            map_.addLayer(dataset, {}, names[2])
-            map_.add_legend(
-                legend_title=names[2],
-                builtin_legend='COPERNICUS/Landcover/100m/Proba-V/Global')
-        elif choice == 4:
-            map_.addLayer(dataset, {}, names[3])
-            map_.add_legend(
-                legend_title=names[3],
-                builtin_legend='COPERNICUS/CORINE/V20/100m')
+    if choice == 1:
+        palette = ['05450a', '086a10', '54a708', '78d203',
+                   '009900', 'c6b044', 'dcd159', 'dade48',
+                   'fbff13', 'b6ff05', '27ff87', 'c24f44',
+                   'a5a5a5', 'ff6d4c', '69fff8', 'f9ffa4', '1c0dff']
+        map_.addLayer(
+            dataset,
+            {'min': 1.0, 'max': 17.0, 'palette': palette},
+            'MODIS Land Cover'
+        )
+        map_.add_legend(
+            legend_title='MODIS Land Cover',
+            builtin_legend='MODIS/006/MCD12Q1')
+    elif choice == 2:
+        map_.addLayer(dataset, {'bands': ['Map']}, 'ESA World Cover')
+        map_.add_legend(
+            legend_title='ESA World Cover',
+            builtin_legend='ESA_WorldCover')
+    elif choice == 3:
+        map_.addLayer(dataset, {}, 'Copernicus Global Land Service')
+        map_.add_legend(
+            legend_title='Copernicus Global Land Service',
+            builtin_legend='COPERNICUS/Landcover/100m/Proba-V/Global')
+    elif choice == 4:
+        map_.addLayer(dataset, {}, 'Copernicus CORINE Land Cover')
+        map_.add_legend(
+            legend_title='Copernicus CORINE Land Cover',
+            builtin_legend='COPERNICUS/CORINE/V20/100m')
 
 
 def get_legend(choice):
     """Get the legend for the land cover data."""
-    assert choice in [1, 2, 3, 4]
     # Image legends are hosted online
     if choice == 1:
         return 'https://i.ibb.co/w0Jhsck/legend-MODIS.png'
@@ -265,32 +237,15 @@ def create_map(fire_name, prob, seed, choice,
     Returns:
         geemap.Map: map of the burnt area
     """
-    assert 0 < prob <= 1, '`prob` must be between 0 and 1.'
-    assert choice in [1, 2, 3, 4], '`choice` must be 1, 2, 3, or 4.'
-
     coordinates = get_coordinates(fire_name)
     center = coordinates.mean(axis=0).to_list()
     my_map = geemap.Map(
         location=center, zoom=zoom,
-        scroll_wheel_zoom=True, add_google_map=False
+        scroll_wheel_zoom=True
     )
 
-    location_list = get_location_list(fire_name, prob, seed)
-
-    if cluster:
-        # Create marker cluster
-        marker_cluster = MarkerCluster(
-            location_list,
-            name='Wildfire Location',
-        )
-        my_map.add_layer(marker_cluster)
-    else:
-        # Add markers to the map
-        for location in location_list:
-            my_map.add_marker(location=location, draggable=False)
-
     # Add basemaps
-    my_map.add_basemap('ROADMAP')
+    my_map.add_basemap('SATELLITE')
     my_map.add_basemap('HYBRID')
 
     # Add minimap
@@ -301,8 +256,26 @@ def create_map(fire_name, prob, seed, choice,
     dataset = select_land_cover_data(choice)
     add_to_map(my_map, dataset, choice)
 
+    location_list = get_location_list(fire_name, prob, seed)
+    if cluster:
+        # Create marker cluster
+        marker_cluster = MarkerCluster(
+            markers=[Marker(location=loc, draggable=False)
+                     for loc in location_list],
+            name='Wildfire Location',
+        )
+        my_map.add_layer(marker_cluster)
+    else:
+        # Add markers to the map
+        layer_group = LayerGroup(
+            name='Wildfire Location',
+            layers=[Marker(location=loc, draggable=False)
+                    for loc in location_list]
+        )
+        my_map.add_layer(layer_group)
+
     # Add a layer control panel to the map.
-    my_map.add_layer_control()
+    my_map.addLayerControl()
 
     return my_map
 
@@ -314,6 +287,7 @@ def save_map(map_, fire_name, output_folder, wind=False):
         map_ (geemap.Map): map to save
         fire_name (str): name of the fire
         output_folder (str): folder to save the map to
+        wind (bool): whether the map contains wind data. Default is `False`
     """
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -333,6 +307,7 @@ def open_map(fire_name, output_folder, wind=False):
     Args:
         fire_name (str): name of the fire
         output_folder (str): folder where the HTML file is saved
+        wind (bool): whether the map contains wind data. Default is `False`
     """
     if wind:
         filename = f'{output_folder}wind_map_{fire_name}.html'

@@ -1,7 +1,7 @@
 import glob
 import os
-from collections import Counter
 import webbrowser
+from collections import Counter
 
 import ee
 import matplotlib.colors as mplcols
@@ -115,7 +115,10 @@ def get_choice():
                 3. Copernicus Global Land Service (2019, 100m)
                 4. Copernicus CORINE Land Cover (2018, 100m)"""
             )
-            return int(input('Select land cover data: '))
+            choice = int(input('Select land cover data: '))
+            if choice not in {1, 2, 3, 4}:
+                raise ValueError
+            return choice
         except ValueError:
             print('Invalid input. Please try again.')
 
