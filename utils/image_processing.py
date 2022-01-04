@@ -1,11 +1,13 @@
 import itertools
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from utm import from_latlon
 
 from utils.land_coverage import get_tci_file_path
-from utm import from_latlon
 
 
 def imshow(img, title=None, **kwargs):
@@ -18,7 +20,7 @@ def imshow(img, title=None, **kwargs):
     """
     plt.imshow(img, **kwargs)
     if title is not None:
-        plt.title(title)
+        plt.title(title, {'fontsize': 14})
 
 
 def plot_downloaded_images(fire_name, output_folder, cmap=None):
@@ -33,15 +35,57 @@ def plot_downloaded_images(fire_name, output_folder, cmap=None):
     aft = rasterio.open(f"{output_folder}after_{fire_name}.tiff",
                         driver='GTiff').read(1)
 
-    _, axs = plt.subplots(1, 2, figsize=(10, 10))
-    axs[0].imshow(bef, cmap=cmap)
+    _, axs = plt.subplots(1, 2, figsize=(12, 10))
+
+    im1 = axs[0].imshow(bef, cmap=cmap)
+    divider = make_axes_locatable(axs[0])
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cb = plt.colorbar(im1, cax=cax)
+    cb.remove()
     axs[0].set_title("NDVI Before")
     axs[0].axis('off')
-    axs[1].imshow(aft, cmap=cmap)
+
+    im2 = axs[1].imshow(aft, cmap=cmap)
+    divider = make_axes_locatable(axs[1])
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im2, cax=cax)
     axs[1].set_title("NDVI After")
     axs[1].axis('off')
+
     plt.tight_layout()
     plt.show()
+
+
+def get_ndvi_difference(output_folder, fire_name, save_diff=False):
+    """Plots and returns the NDVI difference between the images.
+
+    Args:
+        output_folder (str): path to the folder where the images are stored
+        fire_name (str): name of the fire
+        save_diff (bool): whether to save the image. Default is `False`
+
+    Returns:
+        difference: NDVI difference between the images
+    """
+    b = rasterio.open(f'{output_folder}before_{fire_name}.tiff').read(1)
+    a = rasterio.open(f'{output_folder}after_{fire_name}.tiff').read(1)
+    difference = b - a
+
+    if save_diff:
+        # save the difference image
+        output_file = f'{output_folder}ndvi_difference_{fire_name}.tiff'
+        if not os.path.exists(output_file):
+            with rasterio.open(fp=output_file,
+                               mode='w', driver='GTiff',
+                               width=b.shape[1],
+                               height=b.shape[0],
+                               count=1,
+                               crs=b.crs,
+                               transform=b.transform,
+                               dtype='float64') as diff_img:
+                diff_img.write(difference, 1)
+
+    return difference
 
 
 def get_fire_pixels(image_folder, latitude, longitude):
@@ -65,6 +109,20 @@ def get_fire_pixels(image_folder, latitude, longitude):
     pixel_row = round((north - utm_y) / - 10)
 
     return pixel_column, pixel_row
+
+
+def plot_location(diff, pixel_column, pixel_row, figsize=(10, 10), **kwargs):
+    plt.figure(figsize=figsize)
+    ax = plt.gca()
+    im = ax.imshow(diff, **kwargs)
+    ax.set_title('NDVI Difference', {'fontsize': 16})
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    ax.plot(pixel_column, pixel_row, 'ro',
+            markersize=4, label='Fire Location')
+    ax.legend(fontsize=13, loc='best')
+    plt.show()
 
 
 def plot_fire_area(image, v1, v2, h1, h2,
