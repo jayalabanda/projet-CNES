@@ -30,27 +30,26 @@ def plot_downloaded_images(fire_name, output_folder, cmap=None):
         fire_name (str): name of the fire
         output_folder (str): path to the folder where the images are stored
     """
-    bef = rasterio.open(f"{output_folder}before_{fire_name}.tiff",
-                        driver='GTiff').read(1)
-    aft = rasterio.open(f"{output_folder}after_{fire_name}.tiff",
-                        driver='GTiff').read(1)
+    before = rasterio.open(f"{output_folder}before_{fire_name}.tiff",
+                           driver='GTiff').read(1)
+    after = rasterio.open(f"{output_folder}after_{fire_name}.tiff",
+                          driver='GTiff').read(1)
+
+    images = [before, after]
+    titles = ['NDVI Before', 'NVDI After']
 
     _, axs = plt.subplots(1, 2, figsize=(12, 10))
-
-    im1 = axs[0].imshow(bef, cmap=cmap)
-    divider = make_axes_locatable(axs[0])
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    cb = plt.colorbar(im1, cax=cax)
-    cb.remove()
-    axs[0].set_title("NDVI Before")
-    axs[0].axis('off')
-
-    im2 = axs[1].imshow(aft, cmap=cmap)
-    divider = make_axes_locatable(axs[1])
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    plt.colorbar(im2, cax=cax)
-    axs[1].set_title("NDVI After")
-    axs[1].axis('off')
+    for i in range(2):
+        im = axs[i].imshow(images[i], cmap=cmap)
+        divider = make_axes_locatable(axs[i])
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        if i == 0:
+            cb = plt.colorbar(im, cax=cax)
+            cb.remove()
+        else:
+            plt.colorbar(im, cax=cax)
+        axs[i].set_title(titles[i])
+        axs[i].axis('off')
 
     plt.tight_layout()
     plt.show()
@@ -84,6 +83,8 @@ def get_ndvi_difference(output_folder, fire_name, save_diff=False):
                                transform=b.transform,
                                dtype='float64') as diff_img:
                 diff_img.write(difference, 1)
+        else:
+            print('Output file already exists.')
 
     return difference
 
@@ -126,7 +127,7 @@ def plot_location(diff, pixel_column, pixel_row, figsize=(10, 10), **kwargs):
 
 
 def plot_fire_area(image, v1, v2, h1, h2,
-                   pixel_column, pixel_row):
+                   pixel_column, pixel_row, **kwargs):
     """Plot the area inside `v1`, `v2`, `h1`, and `h2`.
 
     Args:
@@ -139,16 +140,17 @@ def plot_fire_area(image, v1, v2, h1, h2,
         pixel_row (int): row of the fire pixel
     """
     plt.figure(figsize=(12, 12))
-    imshow(image)
-    plt.plot(pixel_column, pixel_row, 'ro', markersize=3)
-    plt.vlines(v1, ymin=0, ymax=image.shape[0],
-               color='r', linestyle='dashed', linewidth=1)
-    plt.vlines(v2, ymin=0, ymax=image.shape[0],
-               color='r', linestyle='dashed', linewidth=1)
-    plt.hlines(h1, xmin=0, xmax=image.shape[1],
-               color='r', linestyle='dashed', linewidth=1)
-    plt.hlines(h2, xmin=0, xmax=image.shape[1],
-               color='r', linestyle='dashed', linewidth=1)
+    ax = plt.gca()
+    ax.imshow(image, **kwargs)
+    ax.plot(pixel_column, pixel_row, 'ro', markersize=3)
+    ax.vlines(v1, ymin=0, ymax=image.shape[0],
+              color='r', linestyle='dashed', linewidth=1)
+    ax.vlines(v2, ymin=0, ymax=image.shape[0],
+              color='r', linestyle='dashed', linewidth=1)
+    ax.hlines(h1, xmin=0, xmax=image.shape[1],
+              color='r', linestyle='dashed', linewidth=1)
+    ax.hlines(h2, xmin=0, xmax=image.shape[1],
+              color='r', linestyle='dashed', linewidth=1)
     plt.tight_layout()
     plt.show()
 
@@ -192,8 +194,13 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
 
             fire = image[h1:h2, v1:v2]
             plt.figure(figsize=(10, 10))
-            imshow(fire, title, **kwargs)
-            plt.axis('off')
+            ax = plt.gca()
+            im = ax.imshow(fire, **kwargs)
+            ax.set_title(title, {'fontsize': 16})
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            plt.colorbar(im, cax=cax)
+            ax.legend(fontsize=13, loc='best')
             plt.show()
 
             sat = input("Are you satisfied with the values? (y/n): ")
@@ -202,7 +209,8 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
                 break
             plot_fire_area(image,
                            v1, v2, h1, h2,
-                           pixel_column, pixel_row)
+                           pixel_column, pixel_row,
+                           **kwargs)
             continue
         except ValueError:
             print("Invalid value. Try again.")
