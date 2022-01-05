@@ -38,12 +38,12 @@ def plot_downloaded_images(fire_name, output_folder, cmap=None):
         output_folder (str): path to the folder where the images are stored
         cmap (str): color map to use for the images. Default is `None`
     """
-    before = rasterio.open(f"{output_folder}before_{fire_name}.tiff",
-                           driver='GTiff').read(1)
-    after = rasterio.open(f"{output_folder}after_{fire_name}.tiff",
-                          driver='GTiff').read(1)
+    b = rasterio.open(f"{output_folder}before_{fire_name}.tiff",
+                      driver='GTiff').read(1)
+    a = rasterio.open(f"{output_folder}after_{fire_name}.tiff",
+                      driver='GTiff').read(1)
 
-    images = [before, after]
+    images = [b, a]
     titles = ['NDVI Before', 'NVDI After']
 
     _, axs = plt.subplots(1, 2, figsize=(12, 10))
@@ -60,6 +60,8 @@ def plot_downloaded_images(fire_name, output_folder, cmap=None):
         axs[i].axis('off')
 
     plt.tight_layout()
+    output_folder = f'{output_folder}plots/'
+    plt.savefig(f'{output_folder}{fire_name}_images.png', dpi=200)
     plt.show()
 
 
@@ -127,9 +129,8 @@ def get_fire_pixels(image_folder, latitude, longitude):
 def plot_location(ax, pixel_column, pixel_row):
     """Plot a red dot on the image at the given pixel location."""
     ax.plot(pixel_column, pixel_row, 'ro',
-            markersize=4, label='Fire Location')
+            markersize=4, label='Wildfire Location')
     ax.legend(fontsize=13, loc='best')
-    plt.show()
 
 
 def plot_fire_area(image, v1, v2, h1, h2,
@@ -203,7 +204,8 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
                 """)
 
             fire = image[h1:h2, v1:v2]
-            ax = imshow(fire, figsize, title, **kwargs)
+            plt.figure(figsize=figsize)
+            plt.imshow(fire, **kwargs)
             plt.show()
 
             sat = input("Are you satisfied with the values? (y/n): ")
@@ -216,6 +218,7 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
             continue
         except ValueError:
             print("Invalid value. Try again.")
+    ax = imshow(fire, figsize, title, **kwargs)
     return fire, h1, v1
 
 
@@ -376,4 +379,3 @@ def plot_comparison(original, filtered, filter_name, **kwargs):
     axs[1].set_title(filter_name)
     axs[1].axis('off')
     plt.tight_layout()
-    plt.show()

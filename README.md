@@ -140,7 +140,6 @@ The file structure of the repository is, ideally, as follows:
 |   +---info_fires
 |   +---nc_files
 +---output
-|   +---maps
 +---scripts
 +---secrets
 +---utils
@@ -149,6 +148,7 @@ The file structure of the repository is, ideally, as follows:
 where:
 
 * the downloaded images and land cover dataframes are in [data](data/),
+* the produced TIFF images, maps, and plots will be stored inside `output/`,
 * various Python scripts are inside the folder of the same name [scripts](scripts/),
 * the utility functions are located inside [utils](utils/),
 * wind data files stored as NetCDF (.nc) are located in the `nc_files` folder,

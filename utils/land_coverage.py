@@ -303,7 +303,7 @@ def plot_pie_chart(cover_data, labels, colors, points, fire_name,
             out_folder = f'output/{fire_name}/pie_charts/'
         if not os.path.exists(out_folder):
             os.makedirs(out_folder)
-        plt.savefig(f'{out_folder}pie_{points}.png')
+        plt.savefig(f'{out_folder}pie_{points}.png', dpi=200)
 
 
 def create_plots(samples, coordinates, choice, seed=None, **kwargs):
