@@ -19,7 +19,7 @@ def retrieve_wind_data(fire_name, year, month, day, hours,
         month (str): month of data to retrieve
         day (str): day of data to retrieve
         hours (list): hours of data to retrieve.
-            Can be a single hour or a list of hours.
+        Can be a single hour or a list of hours.
         output_path (str): path to save the file. Default is `data/nc_files/`
     """
     if not os.path.exists(output_path):
@@ -83,8 +83,7 @@ def reshape_data(ds):
 
 
 def create_map(ds, center, choice,
-               zoom=5,
-               basemap=basemaps.CartoDB.DarkMatter):
+               zoom=5, basemap=basemaps.CartoDB.DarkMatter):
     """Create map with wind velocity data.
 
     The map can be fully customized. Please refer to the
@@ -97,11 +96,7 @@ def create_map(ds, center, choice,
         choice (int): choice of land cover layer to add to map
         zoom (int): zoom level of map. Default is 5.
         basemap (ipyleaflet.basemaps): basemap to use.
-            Default is `basemaps.CartoDB.DarkMatter`
-        add_zoom_slider (bool): whether to add zoom slider.
-            Default is `True`
-        add_layers_control (bool): whether to add layers control.
-            Default is `True`
+        Default is `basemaps.CartoDB.DarkMatter`
 
     Returns:
         geemap.Map: map with wind velocity data
@@ -136,8 +131,8 @@ def create_map(ds, center, choice,
     my_map.add_layer(marker)
 
     # Add selected land cover
-    lc_layer = pm.select_land_cover_data(choice)
-    pm.add_to_map(my_map, lc_layer, choice)
+    dataset = pm.get_land_cover_dataset(choice)
+    pm.add_to_map(my_map, dataset, choice)
 
     # Add a layer control panel to the map.
     my_map.add_layer_control()

@@ -15,8 +15,7 @@ from PIL import Image
 
 def get_tci_file_path(image_folder):
     """Get the path to the True Color Image (TCI) file.
-
-    Gives more context and information on the selected zone.
+    It gives more context and information on the selected zone.
 
     Args:
         image_folder (path): path to the image folder
@@ -60,19 +59,19 @@ def create_sample_coordinates(image, seed=None, p=0.01):
 
 
 def get_coordinates_from_pixels(img, h, v, img_folder, fire_name):
-    """Retrieves the latitude and longitude coordinates from the pixels.
+    """Retrieves the latitude and longitude coordinates from the pixels,
+    then saves the coordinates in a CSV file.
 
-    Then saves the coordinates in a CSV file.
+    Args:
+        img (image): image from which the coordinates are retrieved
+        h, v (int): horizontal and vertical offsets
+        img_folder (str): path to the folder where
+        the JP2 file is stored
+        fire_name (str): name of the fire
 
-     Args:
-         img (image): image from which the coordinates are retrieved
-         h, v (int): horizontal and vertical offsets
-         img_folder (string): path to the folder where
-         the JP2 file is stored
-
-     Returns:
-         coordinates: list of coordinate tuples (latitude, longitude)
-     """
+    Returns:
+        coordinates: dataframe of coordinate tuples (latitude, longitude)
+    """
     coords = []
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
@@ -104,7 +103,8 @@ def get_coordinates_from_pixels(img, h, v, img_folder, fire_name):
 
 
 def get_choice():
-    """Get the user's choice for the land cover data."""
+    """Get the user's choice for the land cover data.
+    Returns the choice as an integer in [1, 2, 3, 4]."""
     while True:
         try:
             print(
@@ -124,6 +124,7 @@ def get_choice():
 
 
 def select_land_cover_data(choice):
+    """Select the land cover data to be used."""
     if choice == 1:
         return ee.ImageCollection('MODIS/006/MCD12Q1')
     elif choice == 2:
@@ -137,6 +138,14 @@ def select_land_cover_data(choice):
 
 
 def get_lc_urban_point(lc, choice, u_poi, scale):
+    """Get the land cover type for the given point.
+
+    Args:
+        lc (image): land cover image
+        choice (int): choice of the land cover data
+        u_poi (list): point coordinates
+        scale (int): scale of the land cover data
+    """
     # MODIS Land Cover
     if choice == 1:
         return lc.first().sample(u_poi, scale).first().get(
@@ -156,6 +165,9 @@ def get_lc_urban_point(lc, choice, u_poi, scale):
 
 
 def get_land_cover_dataframe(choice):
+    """Get the land cover dataframe with
+    the land cover value, description, and color.
+    """
     if choice == 1:
         return pd.read_csv(
             'data/MODIS_LandCover_Type1.csv')
@@ -179,11 +191,13 @@ def get_land_cover_data(coords_data, choice, size, seed=None):
     Args:
         coords_data (list): list of coordinate tuples (latitude, longitude)
         size (int): number of points to be sampled from the fire
-        seed (int, optional): seed for the random number generator.
+        seed (int): seed for the random number generator.
         Default is `None`
 
     Returns:
-        cover_data (dict): dictionary with the land cover data
+        cover_data (dict): dictionary with the land cover data. The keys
+        are the labels and the values are the number of points in each
+        land cover type.
     """
     lc = select_land_cover_data(choice)
     scale = 1000
@@ -222,8 +236,8 @@ def get_labels_colors(cover_data, land_cover_data):
 
     Args:
         cover_data (dict): dictionary with the land cover data
-        land_cover_data (dataframe): dataframe with the colors by type of
-        land coverage
+        land_cover_data (dataframe): dataframe with the description and
+        colors by type of land coverage
 
     Returns:
         labels: labels for the pie chart
@@ -244,25 +258,31 @@ def get_labels_colors(cover_data, land_cover_data):
     return labels, colors
 
 
-def plot_pie_chart(cover_data, labels, colors, size, fire_name,
+def plot_pie_chart(cover_data, labels, colors, points, fire_name,
                    out_folder=None, save_fig=True):
     """Plots a pie chart with the given data and labels.
 
     Args:
-        data (list): data to be plotted
+        cover_data (dict): data to be plotted
         labels (list): labels to be plotted
         colors (list): colors to be used for the plot
-        output_folder (string): path to the output folder
+        points (int): number of points that were sampled
+        fire_name (str): name of the fire
+        out_folder (str): path to the output folder
         save_fig (bool): whether to save the figure or not. Default is `True`
     """
-    _, ax = plt.subplots(figsize=(12, 6), dpi=150)
+    percent = [100 * cover_data[i] / sum(cover_data.values())
+               for i in cover_data]
+    labels = ['{} ({:.2f}%)'.format(i, j) for i, j in zip(labels, percent)]
+    _, ax = plt.subplots(figsize=(12, 6), dpi=200)
     ax.set_aspect('equal')
     wedges, _, autotexts = ax.pie(
         cover_data.values(),
         colors=colors,
         autopct='%1.1f%%',
         startangle=90,
-        textprops=dict(color='w')
+        textprops=dict(color='black'),
+        pctdistance=1.1
     )
     ax.legend(
         wedges,
@@ -273,15 +293,17 @@ def plot_pie_chart(cover_data, labels, colors, size, fire_name,
         prop={'size': 8},
         labelspacing=0.3
     )
-    plt.setp(autotexts, size=6, weight='bold')
-    plt.title(f'N = {size}')
+    plt.setp(autotexts, size=6)
+    title = f'{fire_name.title()} affected land cover types\n' + \
+        f'Number of points: {points}'
+    plt.title(title)
     plt.tight_layout()
     if save_fig:
         if out_folder is None:
-            out_folder = 'output/pie_chart_' + fire_name + '/'
+            out_folder = f'output/{fire_name}/pie_charts/'
         if not os.path.exists(out_folder):
             os.makedirs(out_folder)
-        plt.savefig(f'{out_folder}pie_{size}.png')
+        plt.savefig(f'{out_folder}pie_{points}.png')
 
 
 def create_plots(samples, coordinates, choice, seed=None, **kwargs):
@@ -290,8 +312,7 @@ def create_plots(samples, coordinates, choice, seed=None, **kwargs):
     Args:
         samples (list): list of samples to be drawn
         coordinates (dataframe): dataframe of coordinates
-        land_cover_data (dataframe): dataframe with colors
-        and descriptionsof land coverage
+        choice (int): choice of the land cover data
         seed (int): seed for the random number generator.
         Default is `None`
         **kwargs: keyword arguments for the `plot_pie_chart` function
@@ -307,7 +328,7 @@ def create_plots(samples, coordinates, choice, seed=None, **kwargs):
             cover_data=cover_data,
             labels=labels,
             colors=colors,
-            size=size,
+            points=size,
             fire_name=kwargs['fire_name'],
             out_folder=kwargs['out_folder'],
             save_fig=kwargs['save_fig']
@@ -322,14 +343,15 @@ def make_pie_chart_gif(fire_name, file_path=None, **kwargs):
     where '*' is the number of points sampled from the fire using the
     `create_plots` function.
 
-    This assumes that the PNG files are saved using the `save_fig` parameter.
+    This assumes that the PNG files are saved using the `save_fig` parameter
+    of the `plot_pie_chart` function.
 
     Args:
-        file_path (string): path to the folder with the images
-        output_folder (string): path to the output folder
+        fire_name (str): name of the fire
+        file_path (str): path to the folder where the PNG files are saved
     """
     if file_path is None:
-        file_path = 'output/pie_chart_' + fire_name + '/'
+        file_path = f'output/{fire_name}/pie_charts/'
 
     files = glob.glob(file_path + 'pie_*.png')
     files = [f.split('_')[-1].split('.')[0] for f in files]
@@ -345,8 +367,8 @@ def open_gif(fire_name, output_folder):
     """Opens the gif created with the `make_pie_chart_gif` function.
 
     Args:
-        fire_name (string): name of the fire
-        output_folder (string): path to the output folder
+        fire_name (str): name of the fire
+        output_folder (str): path to the output folder
     """
     file_path = output_folder + fire_name + '.gif'
     webbrowser.open_new_tab('file://' + os.path.realpath(file_path))

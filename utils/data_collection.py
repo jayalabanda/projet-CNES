@@ -2,12 +2,9 @@ import datetime as dt
 import os
 import zipfile
 
-import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
 from sentinelsat import geojson_to_wkt, read_geojson
-
-from utils.image_processing import imshow
 
 
 def get_band(image_folder, band, resolution):
@@ -23,7 +20,7 @@ def get_band(image_folder, band, resolution):
         choices are 20 and 60
 
     Returns:
-        path to the JP2 image (str)
+        path to the JP2 image
     """
     subfolder = [f for f in os.listdir(image_folder + "/GRANULE/")
                  if f[0] == "L"][0]
@@ -84,6 +81,9 @@ def minimize_dataframe(df):
     Returns:
         df_min: dataframe with a score for each image/row. Lower is better.
     """
+    # You may change the coefficients here. The idea is that
+    # you should give more importance to the vegetation by having a smaller
+    # coefficient.
     coeffs = [2, 0.1, 4]
     key_columns = ["cloudcoverpercentage",
                    "vegetationpercentage",
@@ -109,11 +109,11 @@ def convert_size(df):
     Returns:
         df: dataframe with the size in MB
     """
-    # we convert the data types
+    # We convert the data types
     df = df.convert_dtypes()
 
-    # the "size" column is of type string, for example "1.1 GB" or "980 MB"
-    # if the unit of "size" is 'GB', we convert it to 'MB'
+    # The "size" column is of type string, for example "1.1 GB" or "980 MB".
+    # If the unit of "size" is 'GB', we convert it to 'MB'
     cond = df["size"].apply(lambda x: x.split(" ")[1]) == 'GB'
     df["size"] = np.where(
         cond,
@@ -134,12 +134,14 @@ def get_uuid_title(df):
         title: title of the best image
     """
     df = convert_size(df)
-    # we drop the images with low vegetation
+    # We drop the images with low vegetation. This value is a good indicator
+    # of no-data images.
     print("Dropping images with low vegetation.")
     df = df[df["vegetationpercentage"] >= 45.]
 
-    # we retrieve the image with the best score as long as its size is
-    # large enough, since images with no data are smaller
+    # wW retrieve the image with the best score as long as its size is
+    # large enough, since images with no data are smaller. If you have trouble
+    # finding suitable images, consider lowering the threshold for the size.
     i = 0
     size = df["size"].values[i]
     while size < 980. and i <= df.shape[0]:
@@ -178,7 +180,7 @@ def download_from_api(api, uuid, title, path='data/'):
     dirs = os.listdir(path)
     dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
 
-    # the name of the downloaded file is 'title + .SAFE'
+    # The name of the downloaded file is 'title + .SAFE'
     img_folder = title + '.SAFE'
     if img_folder not in dirs_safe:
         print("Attempting to download image from the API.")
@@ -186,7 +188,7 @@ def download_from_api(api, uuid, title, path='data/'):
     else:
         print("Image already downloaded.")
 
-    # check that the zip file has been downloaded
+    # Check that the zip file has been downloaded
     dirs = os.listdir(path)
     zips = any(".zip" in dr for dr in dirs)
     if zips:
@@ -237,9 +239,7 @@ def calculate_ndvi(red_band, nir_band):
 
 
 def create_ndvi_tiff_image(path, when, fire_name, output_folder='output/'):
-    """Create the TIFF image from the uuid.
-
-    This function creates the TIFF image. Be mindful of the size of the file.
+    """Create the TIFF image. Be mindful of the size of the file.
 
     Args:
         path (string): path to the JP2 files
@@ -252,6 +252,7 @@ def create_ndvi_tiff_image(path, when, fire_name, output_folder='output/'):
     Returns:
         image: opened image with the given uuid
     """
+    output_folder = f'{output_folder}{fire_name}/'
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
@@ -288,8 +289,9 @@ def get_image(api, wildfire_date, observation_interval,
         api (SentinelAPI): API object
         wildfire_date (datetime): date of the wildfire
         observation_interval (int): interval of observation in days
-        path (string): path to save the image. Defaults to `'./data/'`
+        path (string): path to save the image. Defaults to `'data/'`
         when (string): name of the TIFF file, either `'before'` or `'after'`
+        Default is `None`
 
         **kwargs: keyword arguments are:
             geojson_path (string): path to the geojson file
@@ -297,7 +299,7 @@ def get_image(api, wildfire_date, observation_interval,
             Default is 40
             output_folder (string): path to save the TIFF file.
             Default is `'output/'`
-            fire_name (string): name of the TIFF file.
+            fire_name (string): name of the fire
     """
     if when not in ['before', 'after']:
         raise ValueError(

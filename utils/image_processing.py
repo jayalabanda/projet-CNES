@@ -10,17 +10,24 @@ from utm import from_latlon
 from utils.land_coverage import get_tci_file_path
 
 
-def imshow(img, title=None, **kwargs):
-    """This is a wrapper for matplotlib's `imshow` function.
+def imshow(img, figsize, title=None, **kwargs):
+    """This is a wrapper for matplotlib's `imshow` function,
+    adding a colorbar and a title.
 
     Args:
         img: image to display
-        title: title of the image
+        figsize (tuple): size of the figure
+        title (str): title of the image
         **kwargs: additional arguments passed to `matplotlib.pyplot.imshow`
     """
-    plt.imshow(img, **kwargs)
-    if title is not None:
-        plt.title(title, {'fontsize': 14})
+    plt.figure(figsize=figsize)
+    ax = plt.gca()
+    im = ax.imshow(img, **kwargs)
+    ax.set_title(title, {'fontsize': 16})
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    return ax
 
 
 def plot_downloaded_images(fire_name, output_folder, cmap=None):
@@ -29,6 +36,7 @@ def plot_downloaded_images(fire_name, output_folder, cmap=None):
     Args:
         fire_name (str): name of the fire
         output_folder (str): path to the folder where the images are stored
+        cmap (str): color map to use for the images. Default is `None`
     """
     before = rasterio.open(f"{output_folder}before_{fire_name}.tiff",
                            driver='GTiff').read(1)
@@ -97,6 +105,10 @@ def get_fire_pixels(image_folder, latitude, longitude):
         image_folder (str): path to the folder where the images are stored
         latitude (float): latitude of the fire
         longitude (float): longitude of the fire
+
+    Returns:
+        pixel_row (int): row of the fire pixel
+        pixel_column (int): column of the fire pixel
     """
     tci_file_path = get_tci_file_path(image_folder)
     transform = rasterio.open(tci_file_path, driver='JP2OpenJPEG').transform
@@ -112,14 +124,8 @@ def get_fire_pixels(image_folder, latitude, longitude):
     return pixel_column, pixel_row
 
 
-def plot_location(diff, pixel_column, pixel_row, figsize=(10, 10), **kwargs):
-    plt.figure(figsize=figsize)
-    ax = plt.gca()
-    im = ax.imshow(diff, **kwargs)
-    ax.set_title('NDVI Difference', {'fontsize': 16})
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    plt.colorbar(im, cax=cax)
+def plot_location(ax, pixel_column, pixel_row):
+    """Plot a red dot on the image at the given pixel location."""
     ax.plot(pixel_column, pixel_row, 'ro',
             markersize=4, label='Fire Location')
     ax.legend(fontsize=13, loc='best')
@@ -138,11 +144,13 @@ def plot_fire_area(image, v1, v2, h1, h2,
         h2 (int): second horizontal line
         pixel_column (int): column of the fire pixel
         pixel_row (int): row of the fire pixel
+        **kwargs: additional arguments passed to `matplotlib.pyplot.imshow`
     """
-    plt.figure(figsize=(12, 12))
+    plt.figure(figsize=(10, 10))
     ax = plt.gca()
     ax.imshow(image, **kwargs)
-    ax.plot(pixel_column, pixel_row, 'ro', markersize=3)
+    ax.plot(pixel_column, pixel_row, 'ro',
+            markersize=4, label='Fire Location')
     ax.vlines(v1, ymin=0, ymax=image.shape[0],
               color='r', linestyle='dashed', linewidth=1)
     ax.vlines(v2, ymin=0, ymax=image.shape[0],
@@ -151,18 +159,20 @@ def plot_fire_area(image, v1, v2, h1, h2,
               color='r', linestyle='dashed', linewidth=1)
     ax.hlines(h2, xmin=0, xmax=image.shape[1],
               color='r', linestyle='dashed', linewidth=1)
+    ax.legend(fontsize=13, loc='best')
     plt.tight_layout()
     plt.show()
 
 
 def retrieve_fire_area(image, pixel_column, pixel_row,
-                       title=None, **kwargs):
+                       figsize=(10, 10), title='Fire Area', **kwargs):
     """Retrieve the fire area from the image.
 
     Args:
         image (image): image to be processed
         pixel_column (int): column of the fire pixel
         pixel_row (int): row of the fire pixel
+        figsize (tuple): size of the figure. Default is (10, 10)
         title (str): title of the image
         **kwargs: additional arguments passed to `matplotlib.pyplot.imshow`
     """
@@ -193,22 +203,14 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
                 """)
 
             fire = image[h1:h2, v1:v2]
-            plt.figure(figsize=(10, 10))
-            ax = plt.gca()
-            im = ax.imshow(fire, **kwargs)
-            ax.set_title(title, {'fontsize': 16})
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.05)
-            plt.colorbar(im, cax=cax)
-            ax.legend(fontsize=13, loc='best')
+            ax = imshow(fire, figsize, title, **kwargs)
             plt.show()
 
             sat = input("Are you satisfied with the values? (y/n): ")
             print("\n")
             if sat == "y":
                 break
-            plot_fire_area(image,
-                           v1, v2, h1, h2,
+            plot_fire_area(image, v1, v2, h1, h2,
                            pixel_column, pixel_row,
                            **kwargs)
             continue
@@ -260,7 +262,7 @@ def threshold_filter(image, threshold):
 
     Args:
         image: already imported image
-        threshold (float): threshold value
+        threshold (float): threshold value between -1 and 1
 
     Returns:
         image: image with all values below `threshold` set to 0
@@ -276,7 +278,7 @@ def calculate_area(sub_image, original_image, resolution=10):
     Args:
         sub_image: already imported image after thresholding
         original_image: tiff image obtained from the API
-        resolution (int): resolution of the image. Defaults to 10
+        resolution (int): resolution of the image. Default is 10
         (10 means 1 pixel = 10m, etc.)
 
     Returns:
@@ -294,6 +296,7 @@ def merge_two_images(images, horizontal=True):
 
     Args:
         images (list): list of two images
+        horizontal (bool): if True, the images are merged horizontally.
 
     Returns:
         new_image: concatenated image
@@ -331,6 +334,8 @@ def merge_images(n_images, images, horizontal=True):
     Args:
         n_images (int): number of images to merge. Can equal 2 or 4.
         images (list): list of images to merge.
+        horizontal (bool): if True and `n_images` is 2, the images are
+        merged horizontally.
 
     Raises:
         ValueError: Raises an error if the number of images does not match
@@ -352,7 +357,7 @@ def merge_images(n_images, images, horizontal=True):
         raise ValueError("Number of images must be 2 or 4.")
 
 
-def plot_comparison(original, filtered, filter_name):
+def plot_comparison(original, filtered, filter_name, **kwargs):
     """Plots the original and filtered images side by side.
     This function is used when comparing skimage's `morphology` methods.
 
@@ -360,13 +365,14 @@ def plot_comparison(original, filtered, filter_name):
         original (image): original image
         filtered (image): filtered image
         filter_name (str): name of the filter
+        **kwargs: keyword arguments passed to `matplotlib.pyplot.imshow`
     """
     _, axs = plt.subplots(
         ncols=2, figsize=(12, 8), sharex=True, sharey=True)
-    axs[0].imshow(original)
+    axs[0].imshow(original, **kwargs)
     axs[0].set_title('Original')
     axs[0].axis('off')
-    axs[1].imshow(filtered)
+    axs[1].imshow(filtered, **kwargs)
     axs[1].set_title(filter_name)
     axs[1].axis('off')
     plt.tight_layout()

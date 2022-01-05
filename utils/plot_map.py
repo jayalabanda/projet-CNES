@@ -134,7 +134,7 @@ def add_ee_layer(self, ee_object, vis_params, name):
         print(f"Could not display {name}.")
 
 
-def select_land_cover_data(choice):
+def get_land_cover_dataset(choice):
     """Select the land cover data to be displayed on the map.
 
     Args:
@@ -145,8 +145,8 @@ def select_land_cover_data(choice):
         displayed on the map
     """
     if choice == 1:
-        dat = ee.ImageCollection('MODIS/006/MCD12Q1')
-        return dat.select('LC_Type1')
+        dataset = ee.ImageCollection('MODIS/006/MCD12Q1')
+        return dataset.select('LC_Type1')
     elif choice == 2:
         return ee.ImageCollection("ESA/WorldCover/v100").first()
     elif choice == 3:
@@ -154,8 +154,8 @@ def select_land_cover_data(choice):
             "COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019").select(
                 'discrete_classification')
     elif choice == 4:
-        dat = ee.Image("COPERNICUS/CORINE/V20/100m/2018")
-        return dat.select('landcover')
+        dataset = ee.Image("COPERNICUS/CORINE/V20/100m/2018")
+        return dataset.select('landcover')
 
 
 def add_to_map(map_, dataset, choice):
@@ -210,14 +210,14 @@ def get_legend(choice):
         return 'https://i.ibb.co/1sFzhf8/legend-CORINE.png'
 
 
-def create_map(fire_name, prob, seed, choice,
-               zoom=5, cluster=False, minimap=False):
+def create_map(fire_name, prob, choice,
+               seed=None, zoom=5, cluster=False, minimap=False):
     """Create a geemap map of the burnt area using `prob` percent of
     the number of coordinates in the fire CSV.
 
     A Google Satellite and Google Maps layers are added to the map,
     along with the selected land cover layer used in the
-    `select_land_cover_data` function.
+    `get_land_cover_dataset` function.
 
     The map also has a cluster and minimap options.
 
@@ -226,8 +226,9 @@ def create_map(fire_name, prob, seed, choice,
     Args:
         fire_name (str): name of the fire
         prob (float): percentage of coordinates to use in the map
-        seed (int): seed used to generate the sampled coordinates
         choice (int): choice of land cover data
+        seed (int): seed used to generate the sampled coordinates.
+        Default is `None`
         zoom (int): zoom level of the map. Default is 5
         cluster (bool): whether to cluster the coordinates.
         Default is `False`
@@ -245,7 +246,7 @@ def create_map(fire_name, prob, seed, choice,
     )
 
     # Add basemaps
-    my_map.add_basemap('SATELLITE')
+    # my_map.add_basemap('SATELLITE')
     my_map.add_basemap('HYBRID')
 
     # Add minimap
@@ -253,7 +254,7 @@ def create_map(fire_name, prob, seed, choice,
         my_map.add_minimap(zoom=6)
 
     # Add selected land cover
-    dataset = select_land_cover_data(choice)
+    dataset = get_land_cover_dataset(choice)
     add_to_map(my_map, dataset, choice)
 
     location_list = get_location_list(fire_name, prob, seed)
@@ -293,15 +294,15 @@ def save_map(map_, fire_name, output_folder, wind=False):
         os.makedirs(output_folder)
 
     if wind:
-        filename = f'{output_folder}wind_map_{fire_name}.html'
+        filename = f'{output_folder}wind_map.html'
         title = f'Wind Map for {fire_name}'
     else:
-        filename = f'{output_folder}map_{fire_name}.html'
-        title = f'Coordinates Map for {fire_name}'
+        filename = f'{output_folder}map.html'
+        title = f'Land Cover Map for {fire_name}'
     map_.to_html(outfile=filename, title=title)
 
 
-def open_map(fire_name, output_folder, wind=False):
+def open_map(output_folder, wind=False):
     """Open the HTML file from the map in a web browser.
 
     Args:
@@ -310,7 +311,7 @@ def open_map(fire_name, output_folder, wind=False):
         wind (bool): whether the map contains wind data. Default is `False`
     """
     if wind:
-        filename = f'{output_folder}wind_map_{fire_name}.html'
+        filename = f'{output_folder}wind_map.html'
     else:
-        filename = f'{output_folder}map_{fire_name}.html'
+        filename = f'{output_folder}map.html'
     webbrowser.open_new_tab('file://' + os.path.realpath(filename))
