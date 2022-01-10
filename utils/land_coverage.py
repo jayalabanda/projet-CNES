@@ -58,7 +58,8 @@ def create_sample_coordinates(image, seed=None, p=0.01):
     return rand_image
 
 
-def get_coordinates_from_pixels(img, h, v, img_folder, fire_name):
+def get_coordinates_from_pixels(img, h, v, img_folder, fire_name,
+                                coords_path='data/coordinates_files/'):
     """Retrieves the latitude and longitude coordinates from the pixels,
     then saves the coordinates in a CSV file.
 
@@ -93,12 +94,11 @@ def get_coordinates_from_pixels(img, h, v, img_folder, fire_name):
             east, north, zone_number, zone_letter)
         coordinates.append((latitude, longitude))
 
+    if not os.path.exists(coords_path):
+        os.makedirs(coords_path)
+
     coordinates = pd.DataFrame(coordinates, columns=['latitude', 'longitude'])
-
-    if not os.path.exists('data/coordinates_files/'):
-        os.makedirs('data/coordinates_files/')
-
-    coordinates.to_csv(f'data/coordinates_files/{fire_name}.csv', index=False)
+    coordinates.to_csv(f'{coords_path}{fire_name}.csv', index=False)
     return coordinates
 
 
@@ -182,7 +182,7 @@ def get_land_cover_dataframe(choice):
             'data/Copernicus_CORINE_Land_Cover.csv')
 
 
-def get_land_cover_data(coords_data, choice, size, seed=None):
+def get_land_cover_data(coords_data, choice, size, seed):
     """Retrieves the land cover data from the coordinates.
 
     The keys in the dictionary are the labels and the values are the
@@ -191,8 +191,7 @@ def get_land_cover_data(coords_data, choice, size, seed=None):
     Args:
         coords_data (list): list of coordinate tuples (latitude, longitude)
         size (int): number of points to be sampled from the fire
-        seed (int): seed for the random number generator.
-        Default is `None`
+        seed (int): seed for the random number generator
 
     Returns:
         cover_data (dict): dictionary with the land cover data. The keys

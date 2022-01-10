@@ -6,7 +6,7 @@ import xarray as xr
 from ipyleaflet import Marker, basemaps
 from ipyleaflet.velocity import Velocity
 
-import utils.plot_map as pm
+from utils.plot_map import add_to_map, get_land_cover_dataset
 
 
 def retrieve_wind_data(fire_name, year, month, day, hours,
@@ -131,8 +131,8 @@ def create_map(ds, center, choice,
     my_map.add_layer(marker)
 
     # Add selected land cover
-    dataset = pm.get_land_cover_dataset(choice)
-    pm.add_to_map(my_map, dataset, choice)
+    dataset = get_land_cover_dataset(choice)
+    add_to_map(my_map, dataset, choice)
 
     # Add a layer control panel to the map.
     my_map.add_layer_control()
