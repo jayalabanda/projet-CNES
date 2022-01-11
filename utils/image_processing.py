@@ -30,7 +30,7 @@ def imshow(img, figsize, title=None, **kwargs):
     return ax
 
 
-def plot_downloaded_images(fire_name, output_folder, cmap=None):
+def plot_downloaded_images(fire_name, output_folder, cmap=None, save=False):
     """Plot the created TIFF images from before and after the fire.
 
     Args:
@@ -60,8 +60,11 @@ def plot_downloaded_images(fire_name, output_folder, cmap=None):
         axs[i].axis('off')
 
     plt.tight_layout()
-    output_folder = f'{output_folder}plots/'
-    plt.savefig(f'{output_folder}{fire_name}_images.png', dpi=200)
+    if save:
+        output_folder = f'{output_folder}plots/'
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+        plt.savefig(f'{output_folder}{fire_name}_images.png', dpi=200)
     plt.show()
 
 

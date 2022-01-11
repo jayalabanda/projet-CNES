@@ -10,7 +10,7 @@ The main goal is to create an "impact map" containing information about wildfire
 
 This project was our M.Eng's Innovation and Research Project at INSA Toulouse, in partnership with the French space agency CNES (National Centre for Space Studies, in French).
 
-This project consisted in detecting, quantifying, and studying the impact of wildfires. To do this, we proceeeded in three main steps:
+This project consisted in detecting, quantifying, and studying the impact of wildfires. To do this, we proceeded in three main steps:
 
 1. First, we retrieved images from the affected area using Sentinel's mission's images and with using its Python API (details [here](https://github.com/sentinelsat/sentinelsat) and [here](https://sentinelsat.readthedocs.io/en/stable/)).
 2. Then, using an index called NDVI¹, which "measures the density of green on an area of land" (Weier and Herring, 2000), we were able to highlight the affected area by measuring the difference in NDVI from before and after the wildfire.

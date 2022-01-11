@@ -1,3 +1,6 @@
+# report files
+*.pdf
+
 # image files
 *.tiff
 *.jp2
