@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
+import seaborn as sns
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from utm import from_latlon
 
@@ -294,6 +295,46 @@ def calculate_area(sub_image, original_image, resolution=10):
     original_area = original_image.size * resolution**2 / 1_000_000  # km^2
     sub_image_area = sub_image.size / original_image.size * original_area
     return count / sub_image.size * sub_image_area
+
+
+def get_thresholds_areas(fire, original_image, resolution=10):
+    areas = []
+    thresholds = np.linspace(0., 1., 200)
+    for thr in thresholds:
+        tmp = threshold_filter(fire, thr)
+        area = round(calculate_area(tmp, original_image, resolution) * 100, 4)
+        areas.append(area)
+
+    return thresholds, areas
+
+
+def get_threshold(thresholds, areas, true_area):
+    """Finds the threshold that gives the best approximation of the true area.
+
+    Args:
+        thresholds (array): array of the thresholds
+        areas (array): array of the areas corresponding to the thresholds
+        true_area (float): true area in squared kilometers
+
+    Returns:
+        threshold (float): threshold that gives the best approximation of the
+        true area
+    """
+    areas = np.asarray(areas)
+    diff = abs(true_area - areas)
+    return round(thresholds[np.argmin(diff)], 3)
+
+
+def plot_area_vs_threshold(thresholds, areas, true_area):
+    plt.figure(figsize=(8, 6))
+    with sns.axes_style('darkgrid'):
+        plt.plot(thresholds, areas)
+        plt.hlines(true_area, thresholds[0], thresholds[-1],
+                   colors='r', linestyles='dashed')
+        plt.xlabel('Threshold')
+        plt.ylabel('Burnt Area (ha)')
+        plt.title('Calculated Area vs. Threshold')
+        plt.legend(['Calculated Area', 'True Value'])
 
 
 def merge_two_images(images, horizontal=True):
