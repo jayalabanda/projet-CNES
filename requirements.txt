@@ -2,37 +2,39 @@
 python==3.8.*
 
 # base scientific libraries
-numpy
-scipy
-pandas
-xarray
+numpy~=1.21.5
+scipy~=1.7.3
+pandas~=1.3.5
+xarray~=0.20.2
 netcdf4
 
 # plotting libraries
-matplotlib
-seaborn
-folium
-ipyleaflet
-geemap
+matplotlib~=3.5.1
+seaborn~=0.11.2
+folium~=0.12.1.post1
+ipyleaflet~=0.14.0
+geemap~=0.10.2
 
 # geospatial libraries
-rasterio
-sentinelsat
-utm
+rasterio~=1.2.10
+sentinelsat~=1.1.0
+utm~=0.7.0
 geojson
 geopandas
-earthengine-api
-cdsapi
+earthengine-api~=0.1.292
+cdsapi~=0.5.1
 
 # image processing libraries
 opencv
-pillow
-scikit-image
+pillow~=8.4.0
+scikit-image~=0.19.1
 
 # others
 notebook
-beautifulsoup4
+ipython
+beautifulsoup4~=4.10.0
 rtree==0.9.3
 pywin32==225
 dask
 bottleneck
+requests~=2.26.0

@@ -92,7 +92,7 @@ def create_map(ds, center, choice,
 
     Args:
         ds (xarray.Dataset): dataset containing wind data
-        center (list): center of map in [lat, lon] format
+        center (tuple): center of map in [lat, lon] format
         choice (int): choice of land cover layer to add to map
         zoom (int): zoom level of map. Default is 5.
         basemap (ipyleaflet.basemaps): basemap to use.

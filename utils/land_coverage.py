@@ -65,10 +65,13 @@ def get_coordinates_from_pixels(img, h, v, img_folder, fire_name,
 
     Args:
         img (image): image from which the coordinates are retrieved
-        h, v (int): horizontal and vertical offsets
+        h (int): horizontal offset
+        v (int): vertical offset
         img_folder (str): path to the folder where
         the JP2 file is stored
         fire_name (str): name of the fire
+        coords_path (str): path to the folder where the coordinates
+        are saved
 
     Returns:
         coordinates: dataframe of coordinate tuples (latitude, longitude)
@@ -189,7 +192,8 @@ def get_land_cover_data(coords_data, choice, size, seed):
     number of points in each land cover type.
 
     Args:
-        coords_data (list): list of coordinate tuples (latitude, longitude)
+        coords_data (pandas.DataFrame): list of coordinate tuples (latitude, longitude)
+        choice (int): choice of the land cover data
         size (int): number of points to be sampled from the fire
         seed (int): seed for the random number generator
 
@@ -215,8 +219,9 @@ def get_land_cover_data(coords_data, choice, size, seed):
             # access the earth engine API
             lc_urban_point = get_lc_urban_point(lc, choice, u_poi, scale)
             cover_data.append(lc_urban_point)
-        except:
+        except Exception as e:
             print('Error with Earth Engine. Land cover could not be found.')
+            print(e)
 
     if None in cover_data:
         cover_data = [i for i in cover_data if i]  # remove None values
@@ -309,7 +314,7 @@ def create_plots(samples, coordinates, choice, seed=None, **kwargs):
     """Creates the plots for the given samples.
 
     Args:
-        samples (list): list of samples to be drawn
+        samples (numpy.array): list of samples to be drawn
         coordinates (dataframe): dataframe of coordinates
         choice (int): choice of the land cover data
         seed (int): seed for the random number generator.

@@ -130,8 +130,9 @@ def add_ee_layer(self, ee_object, vis_params, name):
                 control=True
             ).add_to(self)
 
-    except:
+    except Exception as e:
         print(f"Could not display {name}.")
+        print(e)
 
 
 def get_land_cover_dataset(choice):
@@ -306,7 +307,6 @@ def open_map(output_folder, wind=False):
     """Open the HTML file from the map in a web browser.
 
     Args:
-        fire_name (str): name of the fire
         output_folder (str): folder where the HTML file is saved
         wind (bool): whether the map contains wind data. Default is `False`
     """

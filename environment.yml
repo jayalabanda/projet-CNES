@@ -19,6 +19,7 @@ dependencies:
   - earthengine-api
   - scikit-image
   - notebook
+  - ipython
   - opencv
   - cdsapi
   - xarray

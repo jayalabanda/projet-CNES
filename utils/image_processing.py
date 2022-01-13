@@ -38,6 +38,7 @@ def plot_downloaded_images(fire_name, output_folder, cmap=None, save=False):
         fire_name (str): name of the fire
         output_folder (str): path to the folder where the images are stored
         cmap (str): color map to use for the images. Default is `None`
+        save (bool): whether to save the image. Default is `False`
     """
     b = rasterio.open(f"{output_folder}before_{fire_name}.tiff",
                       driver='GTiff').read(1)
@@ -222,7 +223,7 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
             continue
         except ValueError:
             print("Invalid value. Try again.")
-    ax = imshow(fire, figsize, title, **kwargs)
+    _ = imshow(fire, figsize, title, **kwargs)
     return fire, h1, v1
 
 
@@ -248,19 +249,19 @@ def split_image(image, fragment_count):
     return split
 
 
-def plot_split_image(split_image, fragment_count):
-    """Plots all of the fragmented images.
+def plot_split_image(spl_image, fragment_count):
+    """Plots all the fragmented images.
 
     The split image comes from the `split_image` function.
 
     Args:
-        split_image (array): array of the split image. See `split_image`
+        spl_image (dict): dict of the split image. See `split_image`
         fragment_count (int): number of fragments
     """
     n = range(fragment_count)
     _, axs = plt.subplots(fragment_count, fragment_count, figsize=(10, 10))
     for y, x in itertools.product(n, n):
-        axs[y, x].imshow(split_image[(x, y)])
+        axs[y, x].imshow(spl_image[(x, y)])
         axs[y, x].axis('off')
 
 
@@ -280,7 +281,7 @@ def threshold_filter(image, threshold):
 
 
 def calculate_area(sub_image, original_image, resolution=10):
-    """Calculates the surface, in squared kilometers, of the burnt area.
+    """Calculates the surface, in square kilometers, of the burnt area.
 
     Args:
         sub_image: already imported image after thresholding
@@ -289,7 +290,7 @@ def calculate_area(sub_image, original_image, resolution=10):
         (10 means 1 pixel = 10m, etc.)
 
     Returns:
-        area: area of the image in squared kilometers
+        area: area of the image in square kilometers
     """
     count = np.count_nonzero(sub_image)
     original_area = original_image.size * resolution**2 / 1_000_000  # km^2
@@ -312,13 +313,12 @@ def get_threshold(thresholds, areas, true_area):
     """Finds the threshold that gives the best approximation of the true area.
 
     Args:
-        thresholds (array): array of the thresholds
-        areas (array): array of the areas corresponding to the thresholds
-        true_area (float): true area in squared kilometers
+        thresholds (numpy.array): array of the thresholds
+        areas (list): array of the areas corresponding to the thresholds
+        true_area (float): true area in square kilometers
 
     Returns:
-        threshold (float): threshold that gives the best approximation of the
-        true area
+        threshold: threshold that gives the best approximation of the true area
     """
     areas = np.asarray(areas)
     diff = abs(true_area - areas)

@@ -207,6 +207,7 @@ def open_rasterio(image_path, driver='JP2OpenJPEG'):
 
     Args:
         image_path (string): path to the JP2 image
+        driver: rasterio driver. Default is 'JP2OpenJPEG'
 
     Returns:
         img: image opened with rasterio
@@ -225,8 +226,8 @@ def calculate_ndvi(red_band, nir_band):
     where `B04` is the red band, and `B08` is the near-infrared band.
 
     Args:
-        red_band (array): red band of the image
-        nir_band (array): nir band of the image
+        red_band (numpy.array): red band of the image
+        nir_band (numpy.array): nir band of the image
 
     Returns:
         ndvi: NDVI of the image
@@ -361,7 +362,9 @@ def check_downloaded_data(path, output_folder, fire_name):
     """Check if the data has already been downloaded.
 
     Args:
+        path (string): path to the JP2 files
         output_folder (str): path to the folder where the images are stored
+        fire_name (str): name of the fire
 
     Returns:
         bool: `True` if the data is downloaded, `False` otherwise

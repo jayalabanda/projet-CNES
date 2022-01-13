@@ -1,7 +1,7 @@
 def get_fire_name():
     while True:
         try:
-            fire_name = input('Enter the name for the fire: ').lower()
+            fire_name = input('Enter the name for the fire: ').lower().strip()
             if fire_name == '':
                 raise ValueError
             break
@@ -19,6 +19,8 @@ def get_percentage(case=None):
             elif case == 'map':
                 prob = input(
                     "Enter the percentage of points to add to the map (0-100%): ")
+            else:
+                raise ValueError
             prob = prob[:-1] if prob[-1] == '%' else prob
             prob = float(prob) / 100 if float(prob) > 1. else float(prob)
             if 0 < prob <= 1:
