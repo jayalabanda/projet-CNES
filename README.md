@@ -52,16 +52,18 @@ _Note: if you want to install the packages manually, it is **highly** recommende
 There are two ways of executing the code. You can type:
 
 ```console
-> python main.py
+> python main.py --fire_name <name_of_fire>
 ```
 
-in a console, which will launch the application on the command line, or open the notebook [main.ipynb](main.ipynb) in Jupyter Notebook by executing the command:
+in a console, which will launch the application on the command line. The command line argument is optional, but it speeds up the process. For more information, refer to the next section ("Wildfire information).
+
+You can also open the notebook [main.ipynb](main.ipynb) in Jupyter Notebook by executing the command:
 
 ```console
 > jupyter notebook
 ```
 
-and navigating to the location of the file in the tab that opens in your browser.
+and navigating to the folder in the tab that opens in your browser.
 
 ---
 
@@ -117,9 +119,15 @@ Moreover, you will need a free [Copernicus Open Access Hub](https://scihub.coper
 
 In order to use Google's Earth Engine API, you must create a (free) account at [Earth Engine API](https://developers.google.com/earth-engine) and then authenticate once. Your token will be saved so you will not need to do it again anymore.
 
+To install it, use the command
+
+```console
+> conda install -c conda-forge earthengine-api
+```
+
 ### Climate Data Store API
 
-You will also need a free CDS account to retrieve wind data. Instructions are given here: [How to use the CDS API](https://cds.climate.copernicus.eu/api-how-to). **Remember** to install the CDS API client using
+You will also need a free CDS account to retrieve wind data. Instructions are given here: [How to use the CDS API](https://cds.climate.copernicus.eu/api-how-to). **Remember** to install the CDS API client using `conda`:
 
 ```console
 > conda install -c conda-forge cdsapi
@@ -152,7 +160,7 @@ where:
 * various Python scripts are inside the folder of the same name [scripts](scripts/),
 * the utility functions are located inside [utils](utils/),
 * wind data files stored as NetCDF (.nc) are located in the `nc_files` folder,
-* and your access credentials for the Sentinel API are inside `secrets`
+* and your access credentials for the Sentinel API are inside `secrets`.
 
 ### Downloaded images
 
@@ -162,7 +170,7 @@ Moreover, as the downloaded data are large, the first step of the process may ta
 
 ### Coordinates files
 
-This folder will contain any CSV files created during the execution of the program. These files will contain pairs of latitude and longitude coordinates of the affected areas.
+This folder will contain any CSV files created during the execution of the program. These files will contain pairs of latitude and longitude coordinates of the affected areas which you can usein QGIS, for example. [This website](https://gee-community.github.io/qgis-earthengine-plugin/) provides a good explanation on how to obtain similar results using QGIS.
 
 ### GeoJSON files
 
@@ -180,7 +188,7 @@ If you have any questions or encounter any problems, please contact me at my ema
 
 To-do list:
 
-* [ ] create convex hull figures from fire coordinates
-* [ ] continue working on [main.py](main.py)
+* ~~[ ] create convex hull figures from fire coordinates~~
+* [x] continue working on [main.py](main.py)
 * [x] clean and test new scripts inside [utils](utils/) folder
-* [ ] make the process as automatic as possible
+* [x] make the process as automatic as possible
