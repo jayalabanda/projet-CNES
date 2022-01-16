@@ -89,7 +89,6 @@ def minimize_dataframe(df):
                    "vegetationpercentage",
                    "waterpercentage"]
 
-    print("Minimizing dataframe.")
     df_min = df.copy()
     score = (df_min[key_columns[0]] * coeffs[0]) +\
             (df_min[key_columns[1]] * coeffs[1]) +\
@@ -134,12 +133,11 @@ def get_uuid_title(df):
         title: title of the best image
     """
     df = convert_size(df)
-    # We drop the images with low vegetation. This value is a good indicator
-    # of no-data images.
-    print("Dropping images with low vegetation.")
+    # We drop the images with low vegetation.
+    # This column is a good indicator of no-data images.
     df = df[df["vegetationpercentage"] >= 45.]
 
-    # wW retrieve the image with the best score as long as its size is
+    # We retrieve the image with the best score as long as its size is
     # large enough, since images with no data are smaller. If you have trouble
     # finding suitable images, consider lowering the threshold for the size.
     i = 0
@@ -206,7 +204,7 @@ def open_rasterio(image_path, driver='JP2OpenJPEG'):
     """Opens the given image with rasterio.
 
     Args:
-        image_path (string): path to the JP2 image
+        image_path (string): path to the image file
         driver: rasterio driver. Default is 'JP2OpenJPEG'
 
     Returns:

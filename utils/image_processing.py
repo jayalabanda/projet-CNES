@@ -16,7 +16,7 @@ def imshow(img, figsize, title=None, **kwargs):
     adding a colorbar and a title.
 
     Args:
-        img: image to display
+        img (ndarray): image to display
         figsize (tuple): size of the figure
         title (str): title of the image
         **kwargs: additional arguments passed to `matplotlib.pyplot.imshow`
@@ -87,17 +87,19 @@ def get_ndvi_difference(output_folder, fire_name, save_diff=False):
 
     if save_diff:
         # save the difference image
+        tmp = rasterio.open(f'{output_folder}before_{fire_name}.tiff')
         output_file = f'{output_folder}ndvi_difference_{fire_name}.tiff'
         if not os.path.exists(output_file):
             with rasterio.open(fp=output_file,
                                mode='w', driver='GTiff',
-                               width=b.shape[1],
-                               height=b.shape[0],
+                               width=tmp.shape[1],
+                               height=tmp.shape[0],
                                count=1,
-                               crs=b.crs,
-                               transform=b.transform,
+                               crs=tmp.crs,
+                               transform=tmp.transform,
                                dtype='float64') as diff_img:
                 diff_img.write(difference, 1)
+            tmp.close()
         else:
             print('Output file already exists.')
 
@@ -143,7 +145,7 @@ def plot_fire_area(image, v1, v2, h1, h2,
     """Plot the area inside `v1`, `v2`, `h1`, and `h2`.
 
     Args:
-        image (image): image to be delimited
+        image (ndarray): image to be delimited
         v1 (int): first vertical line
         v2 (int): second vertical line
         h1 (int): first horizontal line
@@ -175,12 +177,17 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
     """Retrieve the fire area from the image.
 
     Args:
-        image (image): image to be processed
+        image (ndarray): image to be processed
         pixel_column (int): column of the fire pixel
         pixel_row (int): row of the fire pixel
         figsize (tuple): size of the figure. Default is (10, 10)
         title (str): title of the image
         **kwargs: additional arguments passed to `matplotlib.pyplot.imshow`
+
+    Returns:
+        fire: image with the fire area
+        h1: first horizontal line (vertical offset)
+        v1: first vertical line (horizontal offset)
     """
     n, m = image.shape
     while True:
@@ -233,7 +240,7 @@ def split_image(image, fragment_count):
     The result is a `fragment_count` x `fragment_count` grid of images.
 
     Args:
-        image (image): image to be split
+        image (ndarray): image to be split
         fragment_count (int): number of fragments to be created
 
     Returns:
@@ -269,7 +276,7 @@ def threshold_filter(image, threshold):
     """Puts all values below `threshold` to 0.
 
     Args:
-        image: already imported image
+        image (ndarray): already imported image
         threshold (float): threshold value between -1 and 1
 
     Returns:
@@ -280,37 +287,49 @@ def threshold_filter(image, threshold):
     return temp
 
 
-def calculate_area(sub_image, original_image, resolution=10):
+def calculate_area(image, resolution=10):
     """Calculates the surface, in square kilometers, of the burnt area.
 
     Args:
-        sub_image: already imported image after thresholding
-        original_image: tiff image obtained from the API
+        image (ndarray): already imported image after thresholding
         resolution (int): resolution of the image. Default is 10
         (10 means 1 pixel = 10m, etc.)
 
     Returns:
         area: area of the image in square kilometers
     """
-    count = np.count_nonzero(sub_image)
-    original_area = original_image.size * resolution**2 / 1_000_000  # km^2
-    sub_image_area = sub_image.size / original_image.size * original_area
-    return count / sub_image.size * sub_image_area
+    count = np.count_nonzero(image)
+    return count * resolution**2 / 1_000_000  # to km^2
 
 
-def get_thresholds_areas(fire, original_image, resolution=10):
-    areas = []
+def get_thresholds_areas(fire, resolution=10):
+    """Calculates the surface, in square kilometers, of the burnt area.
+
+    Args:
+        fire (ndarray): already imported image after thresholding
+        original_image (ndarray): image obtained from the API
+        resolution (int): resolution of the image. Default is 10
+
+    Returns:
+        thresholds: list of the threshold values
+        areas: list of computed areas in hectares
+    """
     thresholds = np.linspace(0., 1., 200)
-    for thr in thresholds:
+    areas = np.zeros(len(thresholds))
+    for i in range(len(thresholds)):
+        thr = thresholds[i]
         tmp = threshold_filter(fire, thr)
-        area = round(calculate_area(tmp, original_image, resolution) * 100, 4)
-        areas.append(area)
+        areas[i] = round(calculate_area(tmp, resolution) * 100, 4)
+
+    areas = np.flip(areas)
+    thresholds = np.flip(thresholds)
 
     return thresholds, areas
 
 
 def get_threshold(thresholds, areas, true_area):
-    """Finds the threshold that gives the best approximation of the true area.
+    """Finds the threshold that gives the best,
+    lower approximation of the true area.
 
     Args:
         thresholds (numpy.array): array of the thresholds
@@ -320,9 +339,12 @@ def get_threshold(thresholds, areas, true_area):
     Returns:
         threshold: threshold that gives the best approximation of the true area
     """
-    areas = np.asarray(areas)
-    diff = abs(true_area - areas)
-    return round(thresholds[np.argmin(diff)], 3)
+    i = 0
+    area = areas[i]
+    while area <= 0.99 * true_area:
+        i += 1
+        area = areas[i]
+    return round(thresholds[i - 1], 3)
 
 
 def plot_area_vs_threshold(thresholds, areas, true_area):
@@ -409,8 +431,8 @@ def plot_comparison(original, filtered, filter_name, **kwargs):
     This function is used when comparing skimage's `morphology` methods.
 
     Args:
-        original (image): original image
-        filtered (image): filtered image
+        original (ndarray): original image
+        filtered (ndarray): filtered image
         filter_name (str): name of the filter
         **kwargs: keyword arguments passed to `matplotlib.pyplot.imshow`
     """
@@ -423,3 +445,37 @@ def plot_comparison(original, filtered, filter_name, **kwargs):
     axs[1].set_title(filter_name)
     axs[1].axis('off')
     plt.tight_layout()
+
+
+def save_image(fire, fire_name, h, v, output_folder):
+    # Save the fire area image with rasterio
+    tmp = rasterio.open(f'{output_folder}before_{fire_name}.tiff')
+    transform = tmp.transform
+    transform = transform * rasterio.Affine.translation(v, h)
+    output_file = f'{output_folder}fire_{fire_name}.tiff'
+    if not os.path.exists(output_file):
+        with rasterio.open(fp=output_file,
+                           mode='w', driver='GTiff',
+                           width=tmp.shape[1],
+                           height=tmp.shape[0],
+                           count=1, crs=tmp.crs,
+                           transform=tmp.transform,
+                           dtype='float64') as fire_img:
+            fire_img.write(fire, 1)
+        tmp.close()
+    else:
+        print(f'{output_file} already exists.')
+
+
+def open_fire_image(fire_name, input_folder):
+    """Opens the fire area image with rasterio.
+
+    Args:
+        fire_name (str): name of the fire area image
+        input_folder (str): path to the folder containing the fire area image
+
+    Returns:
+        fire: fire area image
+    """
+    image_path = f'{input_folder}fire_{fire_name}.tiff'
+    return rasterio.open(image_path, driver='GTiff').read(1).astype('float64')

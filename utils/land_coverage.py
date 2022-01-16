@@ -21,7 +21,7 @@ def get_tci_file_path(image_folder):
         image_folder (path): path to the image folder
 
     Returns:
-        path: path of the tci file
+        path: path of the TCI file
     """
     subfolder = [f for f in os.listdir(image_folder + "GRANULE")
                  if f[0] == "L"][0]
@@ -185,6 +185,20 @@ def get_land_cover_dataframe(choice):
             'data/Copernicus_CORINE_Land_Cover.csv')
 
 
+def plot_sampled_coordinates(rand_image, prob, figsize, **kwargs):
+    """Plot the randomly selected points.
+
+    Args:
+        rand_imgage(ndarray): image with the randomly selected points
+        figsize (tuple): size of the figure
+        **kwargs: keyword arguments passed to matplotlib.pyplot.imshow
+    """
+    plt.figure(figsize=figsize)
+    plt.imshow(rand_image, **kwargs)
+    plt.title(f'Sampled Coordinates (p = {prob})')
+    plt.axis('off')
+
+
 def get_land_cover_data(coords_data, choice, size, seed):
     """Retrieves the land cover data from the coordinates.
 
@@ -240,7 +254,7 @@ def get_labels_colors(cover_data, land_cover_data):
 
     Args:
         cover_data (dict): dictionary with the land cover data
-        land_cover_data (dataframe): dataframe with the description and
+        land_cover_data (pandas.dataframe): dataframe with the description and
         colors by type of land coverage
 
     Returns:
@@ -314,7 +328,7 @@ def create_plots(samples, coordinates, choice, seed=None, **kwargs):
     """Creates the plots for the given samples.
 
     Args:
-        samples (numpy.array): list of samples to be drawn
+        samples (ndarray): list of samples to be drawn
         coordinates (dataframe): dataframe of coordinates
         choice (int): choice of the land cover data
         seed (int): seed for the random number generator.
