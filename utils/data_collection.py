@@ -253,10 +253,6 @@ def create_ndvi_tiff_image(path, when, fire_name, output_folder='output/'):
     Returns:
         image: opened image with the given uuid
     """
-    output_folder = f'{output_folder}{fire_name}/'
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
     output_file = f'{output_folder}{when}_{fire_name}.tiff'
 
     image_path_b4 = get_band(path, 'B04', resolution=10)
