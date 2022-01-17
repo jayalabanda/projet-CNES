@@ -298,8 +298,9 @@ if exists and is_empty or not exists:
         out_folder=output_folder,
         save_fig=True
     )
+    print('Done.')
 
-print('Done.\nPlotting pie charts.')
+print('Creating pie chart GIF.')
 land_c.make_pie_chart_gif(
     fire_name=FIRE_NAME,
     file_path=output_folder,
@@ -333,6 +334,9 @@ fire_map = create_map(
 save_map(fire_map, FIRE_NAME, OUTPUT_MAPS, wind=False)
 open_map(OUTPUT_MAPS, wind=False)
 
+input('Press enter to continue.')
+clear_screen()
+
 ###############################################################################
 # WIND DATA
 ###############################################################################
@@ -349,7 +353,7 @@ output_file = wind.retrieve_wind_data(FIRE_NAME, year, month, day, hours)
 print('Output file:', output_file)
 
 ds = wind.open_nc_data(output_file)
-print('Wind data:\n', ds)
+print('\nWind data:\n', ds)
 ds = wind.reshape_data(ds)
 
 wind_map = wind.create_map(
@@ -364,7 +368,6 @@ wind_map.add_layer(basemap_to_tiles(basemaps.CartoDB.DarkMatter))
 save_map(wind_map, FIRE_NAME, OUTPUT_MAPS, wind=True)
 open_map(OUTPUT_MAPS, wind=True)
 
+print('\nReached the end of the wildfire monitoring program.')
 input('Press enter to continue.')
 clear_screen()
-
-print('Reached the end of the wildfire monitoring program.')

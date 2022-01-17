@@ -192,28 +192,23 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
     n, m = image.shape
     while True:
         try:
-            print(f"""Enter the first vertical line.
-                Value must be an integer between 0 and {n}:""")
-            v1 = int(input())
+            print('Please enter the vertical and horizontal lines',
+                  'to bound the fire area, separated by spaces.'
+                  '\nOrder is: vertical line 1, vertical line 2,'
+                  'horizontal line 1, and horizontal line 2.')
+            print(f'The values must be between 0 and {n}.')
+            v1, v2, h1, h2 = map(int, input().split())
+
             assert 0 <= v1 <= n
-            print(f"""Enter the second vertical line.
-                Value must be an integer between {v1} and {n}:""")
-            v2 = int(input())
             assert v1 < v2 <= n
-            print(f"""Enter the first horizontal line.
-                Value must be an integer between 0 and {m}:""")
-            h1 = int(input())
             assert 0 <= h1 <= m
-            print(f"""Enter the second horizontal line.
-                Value must be an integer between {h1} and {m}:""")
-            h2 = int(input())
             assert h1 < h2 <= m
-            print(f"""Your inputs:
-                1st vertical line: {v1}
-                2nd vertical line: {v2}
-                1st horizontal line: {h1}
-                2nd horizontal line: {h2}
-                """)
+
+            print('Your inputs:\n',
+                  f'1st vertical line: {v1}\n',
+                  f'2nd vertical line: {v2}\n',
+                  f'1st horizontal line: {h1}\n',
+                  f'2nd horizontal line: {h2}.')
 
             fire = image[h1:h2, v1:v2]
             plt.figure(figsize=figsize)
@@ -273,7 +268,7 @@ def plot_split_image(spl_image, fragment_count):
 
 
 def threshold_filter(image, threshold):
-    """Puts all values below `threshold` to 0.
+    """Sets all values below `threshold` to 0.
 
     Args:
         image (ndarray): already imported image
@@ -332,19 +327,16 @@ def get_threshold(thresholds, areas, true_area):
     lower approximation of the true area.
 
     Args:
-        thresholds (numpy.array): array of the thresholds
-        areas (list): array of the areas corresponding to the thresholds
+        thresholds (ndarray): array of the thresholds
+        areas (ndarray): array of the areas corresponding to the thresholds
         true_area (float): true area in square kilometers
 
     Returns:
         threshold: threshold that gives the best approximation of the true area
     """
-    i = 0
-    area = areas[i]
-    while area <= 0.99 * true_area:
-        i += 1
-        area = areas[i]
-    return round(thresholds[i - 1], 3)
+    for idx, area in enumerate(areas):
+        if 0.99 * true_area <= area:
+            return round(thresholds[idx - 1], 3)
 
 
 def plot_area_vs_threshold(thresholds, areas, true_area):
