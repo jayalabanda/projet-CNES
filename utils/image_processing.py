@@ -172,29 +172,13 @@ def plot_fire_area(image, v1, v2, h1, h2,
     plt.show()
 
 
-def retrieve_fire_area(image, pixel_column, pixel_row,
-                       figsize=(10, 10), title='Fire Area', **kwargs):
-    """Retrieve the fire area from the image.
-
-    Args:
-        image (ndarray): image to be processed
-        pixel_column (int): column of the fire pixel
-        pixel_row (int): row of the fire pixel
-        figsize (tuple): size of the figure. Default is (10, 10)
-        title (str): title of the image
-        **kwargs: additional arguments passed to `matplotlib.pyplot.imshow`
-
-    Returns:
-        fire: image with the fire area
-        h1: first horizontal line (vertical offset)
-        v1: first vertical line (horizontal offset)
-    """
+def get_inputs(image):
     n, m = image.shape
     while True:
         try:
             print('Please enter the vertical and horizontal lines',
                   'to bound the fire area, separated by spaces.'
-                  '\nOrder is: vertical line 1, vertical line 2,'
+                  '\nOrder is: vertical line 1, vertical line 2 ,'
                   'horizontal line 1, and horizontal line 2.')
             print(f'The values must be between 0 and {n}.')
             v1, v2, h1, h2 = map(int, input().split())
@@ -210,6 +194,35 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
                   f'1st horizontal line: {h1}\n',
                   f'2nd horizontal line: {h2}.')
 
+        except (ValueError, AssertionError):
+            print('Invalid input. Please try again.')
+            continue
+        else:
+            break
+    return h1, h2, v1, v2
+
+
+def retrieve_fire_area(image, pixel_column, pixel_row,
+                       h1, h2, v1, v2,
+                       figsize=(10, 10), title='Fire Area',
+                       **kwargs):
+    """Retrieve the fire area from the image.
+
+    Args:
+        image (ndarray): image to be processed
+        pixel_column (int): column of the fire pixel
+        pixel_row (int): row of the fire pixel
+        figsize (tuple): size of the figure. Default is (10, 10)
+        title (str): title of the image. Default is `Fire Area`
+        **kwargs: additional arguments passed to `matplotlib.pyplot.imshow`
+
+    Returns:
+        fire: image with the fire area
+        h1: first horizontal line (vertical offset)
+        v1: first vertical line (horizontal offset)
+    """
+    while True:
+        try:
             fire = image[h1:h2, v1:v2]
             plt.figure(figsize=figsize)
             plt.imshow(fire, **kwargs)
@@ -222,11 +235,12 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
             plot_fire_area(image, v1, v2, h1, h2,
                            pixel_column, pixel_row,
                            **kwargs)
+            h1, h2, v1, v2 = get_inputs(image)
             continue
         except ValueError:
             print("Invalid value. Try again.")
     _ = imshow(fire, figsize, title, **kwargs)
-    return fire, h1, v1
+    return fire
 
 
 def split_image(image, fragment_count):

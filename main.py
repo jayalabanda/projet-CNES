@@ -3,6 +3,7 @@ import datetime as dt
 import json
 import os
 import sys
+from ast import parse
 
 import ee
 import matplotlib.pyplot as plt
@@ -32,6 +33,10 @@ parser.add_argument(
     '--land_percentage',
     help='Percentage of the land to study, between 0.0 and 1.0',
     type=float)
+parser.add_argument(
+    '--list', nargs='+',
+    help='List of values for bounding the fire',
+    type=int)
 args = parser.parse_args()
 
 
@@ -58,7 +63,7 @@ except Exception as e:
     ee.Initialize()
 
 # Name of the place where the fire is located
-FIRE_NAME = args.fire_name if len(sys.argv) > 1 else get_fire_name()
+FIRE_NAME = args.fire_name or get_fire_name()
 
 # Folder where the JP2 images will be stored
 PATH = f'data/{FIRE_NAME}/'
@@ -199,10 +204,17 @@ plt.show()
 
 print(f'The fire is located at pixels ({pixel_column}, {pixel_row}).\n')
 
-fire, hline_1, vline_1 = ip.retrieve_fire_area(
-    diff, pixel_column, pixel_row,
-    figsize=(10, 10), title='Fire Area'
-)
+if args.list:
+    vline_1, vline_2, hline_1, hline_2 = args.list
+    fire = diff[hline_1:hline_2, vline_1:vline_2]
+    _ = ip.imshow(fire, figsize=(10, 10), title='Fire Area')
+else:
+    hline_1, hline_2, vline_1, vline_2 = ip.get_inputs(diff)
+    fire = ip.retrieve_fire_area(
+        diff, pixel_column, pixel_row,
+        hline_1, hline_2, vline_1, vline_2,
+        figsize=(10, 10), title='Fire Area'
+    )
 plt.savefig(f'{OUTPUT_PLOTS}fire_area.png', dpi=200)
 plt.show()
 
@@ -267,8 +279,7 @@ print('8. Land Cover Classification')
 choice = land_c.get_choice()
 lc_dataframe = land_c.get_land_cover_dataframe(choice)
 
-prob = args.fire_percentage if len(
-    sys.argv) > 1 else get_percentage(case='land use')
+prob = args.fire_percentage or get_percentage(case='land use')
 
 rand_image = land_c.create_sample_coordinates(fire, SEED, prob)
 land_c.plot_sampled_coordinates(
@@ -320,8 +331,7 @@ clear_screen()
 
 print('9. Coordinates Map')
 
-prob = args.land_percentage if len(
-    sys.argv) > 1 else get_percentage(case='map')
+prob = args.land_percentage or get_percentage(case='map')
 
 fire_map = create_map(
     FIRE_NAME, prob, choice,

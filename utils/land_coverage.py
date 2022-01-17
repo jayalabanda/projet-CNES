@@ -110,14 +110,13 @@ def get_choice():
     Returns the choice as an integer in [1, 2, 3, 4]."""
     while True:
         try:
-            print(
-                """Please select the land cover data you want to use.
-                The choices are:
-                1. MODIS Land Cover (2018, 500m)
-                2. ESA World Cover (2020, 10m)
-                3. Copernicus Global Land Service (2019, 100m)
-                4. Copernicus CORINE Land Cover (2018, 100m)"""
-            )
+            print('Please select the land cover data you want to use.',
+                  'The choices are:\n',
+                  '1. MODIS Land Cover (2018, 500m)\n',
+                  '2. ESA World Cover (2020, 10m)\n',
+                  '3. Copernicus Global Land Service (2019, 100m)\n',
+                  '4. Copernicus CORINE Land Cover (2018, 100m)\n'
+                  )
             choice = int(input('Select land cover data: '))
             if choice not in {1, 2, 3, 4}:
                 raise ValueError
