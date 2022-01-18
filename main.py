@@ -191,7 +191,7 @@ print('Plotting NDVI difference.')
 diff = ip.get_ndvi_difference(
     OUTPUT_FOLDER, FIRE_NAME, save_diff=False
 )
-_ = ip.imshow(diff, figsize=(10, 10), title='NDVI Difference')
+ip.imshow(diff, figsize=(10, 10), title='NDVI Difference')
 plt.savefig(f'{OUTPUT_PLOTS}ndvi_difference.png', dpi=200)
 plt.show()
 
@@ -207,12 +207,10 @@ print(f'The fire is located at pixels ({pixel_column}, {pixel_row}).\n')
 if args.list:
     vline_1, vline_2, hline_1, hline_2 = args.list
     fire = diff[hline_1:hline_2, vline_1:vline_2]
-    _ = ip.imshow(fire, figsize=(10, 10), title='Fire Area')
+    ip.imshow(fire, figsize=(10, 10), title='Fire Area')
 else:
-    hline_1, hline_2, vline_1, vline_2 = ip.get_inputs(diff)
-    fire = ip.retrieve_fire_area(
+    fire, hline_1, vline_1 = ip.retrieve_fire_area(
         diff, pixel_column, pixel_row,
-        hline_1, hline_2, vline_1, vline_2,
         figsize=(10, 10), title='Fire Area'
     )
 plt.savefig(f'{OUTPUT_PLOTS}fire_area.png', dpi=200)

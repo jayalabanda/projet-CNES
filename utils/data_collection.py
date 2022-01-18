@@ -200,12 +200,12 @@ def download_from_api(api, uuid, title, path='data/'):
         print("Deleted zip file.")
 
 
-def open_rasterio(image_path, driver='JP2OpenJPEG'):
+def open_rasterio(image_path, driver=None):
     """Opens the given image with rasterio.
 
     Args:
         image_path (string): path to the image file
-        driver: rasterio driver. Default is 'JP2OpenJPEG'
+        driver: rasterio driver. Default is `None`
 
     Returns:
         img: image opened with rasterio

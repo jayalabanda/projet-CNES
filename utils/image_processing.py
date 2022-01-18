@@ -1,3 +1,4 @@
+import glob
 import itertools
 import os
 
@@ -141,8 +142,9 @@ def plot_location(ax, pixel_column, pixel_row):
 
 
 def plot_fire_area(image, v1, v2, h1, h2,
-                   pixel_column, pixel_row, **kwargs):
-    """Plot the area inside `v1`, `v2`, `h1`, and `h2`.
+                   pixel_column, pixel_row,
+                   **kwargs):
+    """Plot the area delimited by `v1`, `v2`, `h1`, and `h2`.
 
     Args:
         image (ndarray): image to be delimited
@@ -154,19 +156,16 @@ def plot_fire_area(image, v1, v2, h1, h2,
         pixel_row (int): row of the fire pixel
         **kwargs: additional arguments passed to `matplotlib.pyplot.imshow`
     """
+    n, m = image.shape
     plt.figure(figsize=(10, 10))
     ax = plt.gca()
     ax.imshow(image, **kwargs)
     ax.plot(pixel_column, pixel_row, 'ro',
             markersize=4, label='Fire Location')
-    ax.vlines(v1, ymin=0, ymax=image.shape[0],
-              color='r', linestyle='dashed', linewidth=1)
-    ax.vlines(v2, ymin=0, ymax=image.shape[0],
-              color='r', linestyle='dashed', linewidth=1)
-    ax.hlines(h1, xmin=0, xmax=image.shape[1],
-              color='r', linestyle='dashed', linewidth=1)
-    ax.hlines(h2, xmin=0, xmax=image.shape[1],
-              color='r', linestyle='dashed', linewidth=1)
+    ax.vlines(v1, ymin=0, ymax=n, color='r', linestyle='dashed', linewidth=1)
+    ax.vlines(v2, ymin=0, ymax=n, color='r', linestyle='dashed', linewidth=1)
+    ax.hlines(h1, xmin=0, xmax=m, color='r', linestyle='dashed', linewidth=1)
+    ax.hlines(h2, xmin=0, xmax=m, color='r', linestyle='dashed', linewidth=1)
     ax.legend(fontsize=13, loc='best')
     plt.tight_layout()
     plt.show()
@@ -181,6 +180,7 @@ def get_inputs(image):
                   '\nOrder is: vertical line 1, vertical line 2 ,'
                   'horizontal line 1, and horizontal line 2.')
             print(f'The values must be between 0 and {n}.')
+
             v1, v2, h1, h2 = map(int, input().split())
 
             assert 0 <= v1 <= n
@@ -193,7 +193,6 @@ def get_inputs(image):
                   f'2nd vertical line: {v2}\n',
                   f'1st horizontal line: {h1}\n',
                   f'2nd horizontal line: {h2}.')
-
         except (ValueError, AssertionError):
             print('Invalid input. Please try again.')
             continue
@@ -203,7 +202,6 @@ def get_inputs(image):
 
 
 def retrieve_fire_area(image, pixel_column, pixel_row,
-                       h1, h2, v1, v2,
                        figsize=(10, 10), title='Fire Area',
                        **kwargs):
     """Retrieve the fire area from the image.
@@ -223,6 +221,8 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
     """
     while True:
         try:
+            h1, h2, v1, v2 = get_inputs(image)
+
             fire = image[h1:h2, v1:v2]
             plt.figure(figsize=figsize)
             plt.imshow(fire, **kwargs)
@@ -235,12 +235,11 @@ def retrieve_fire_area(image, pixel_column, pixel_row,
             plot_fire_area(image, v1, v2, h1, h2,
                            pixel_column, pixel_row,
                            **kwargs)
-            h1, h2, v1, v2 = get_inputs(image)
             continue
         except ValueError:
             print("Invalid value. Try again.")
-    _ = imshow(fire, figsize, title, **kwargs)
-    return fire
+    imshow(fire, figsize, title, **kwargs)
+    return fire, h1, v1
 
 
 def split_image(image, fragment_count):
@@ -316,7 +315,6 @@ def get_thresholds_areas(fire, resolution=10):
 
     Args:
         fire (ndarray): already imported image after thresholding
-        original_image (ndarray): image obtained from the API
         resolution (int): resolution of the image. Default is 10
 
     Returns:
@@ -458,19 +456,16 @@ def save_image(fire, fire_name, h, v, output_folder):
     tmp = rasterio.open(f'{output_folder}before_{fire_name}.tiff')
     transform = tmp.transform
     transform = transform * rasterio.Affine.translation(v, h)
-    output_file = f'{output_folder}fire_{fire_name}.tiff'
-    if not os.path.exists(output_file):
-        with rasterio.open(fp=output_file,
-                           mode='w', driver='GTiff',
-                           width=tmp.shape[1],
-                           height=tmp.shape[0],
-                           count=1, crs=tmp.crs,
-                           transform=tmp.transform,
-                           dtype='float64') as fire_img:
-            fire_img.write(fire, 1)
-        tmp.close()
-    else:
-        print(f'{output_file} already exists.')
+    output_file = f'{output_folder}fire_{fire_name}_{h}_{v}.tiff'
+    with rasterio.open(fp=output_file,
+                       mode='w', driver='GTiff',
+                       width=fire.shape[1],
+                       height=fire.shape[0],
+                       count=1, crs=tmp.crs,
+                       transform=transform,
+                       dtype='float64') as fire_img:
+        fire_img.write(fire, 1)
+    tmp.close()
 
 
 def open_fire_image(fire_name, input_folder):
@@ -483,5 +478,13 @@ def open_fire_image(fire_name, input_folder):
     Returns:
         fire: fire area image
     """
-    image_path = f'{input_folder}fire_{fire_name}.tiff'
-    return rasterio.open(image_path, driver='GTiff').read(1).astype('float64')
+    files = glob.glob(f'{input_folder}fire_{fire_name}_*.tiff')
+    if len(files) == 0:
+        raise ValueError(
+            f'No fire area image found with name {fire_name}.')
+    file = files[0]
+    h = file.split('_')[-2]
+    v = file.split('_')[-1].split('.')[0]
+    image_path = f'{input_folder}fire_{fire_name}_{h}_{v}.tiff'
+    img = rasterio.open(image_path, driver='GTiff').read(1).astype('float64')
+    return img, h, v
