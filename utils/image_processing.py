@@ -173,6 +173,7 @@ def plot_fire_area(image, v1, v2, h1, h2,
 
 def get_inputs(image):
     n, m = image.shape
+    h1, h2, v1, v2 = None, None, None, None
     while True:
         try:
             print('Please enter the vertical and horizontal lines',
@@ -488,3 +489,10 @@ def open_fire_image(fire_name, input_folder):
     image_path = f'{input_folder}fire_{fire_name}_{h}_{v}.tiff'
     img = rasterio.open(image_path, driver='GTiff').read(1).astype('float64')
     return img, h, v
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

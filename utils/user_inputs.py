@@ -30,3 +30,11 @@ def get_percentage(case=None):
         except ValueError:
             print('Please enter a valid number.')
     return prob
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

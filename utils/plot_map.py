@@ -315,3 +315,11 @@ def open_map(output_folder, wind=False):
     else:
         filename = f'{output_folder}map.html'
     webbrowser.open_new_tab('file://' + os.path.realpath(filename))
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

@@ -2,8 +2,6 @@ import argparse
 import datetime as dt
 import json
 import os
-import sys
-from ast import parse
 
 import ee
 import matplotlib.pyplot as plt
@@ -75,6 +73,11 @@ OUTPUT_PLOTS = OUTPUT_FOLDER + 'plots/'
 for path in [PATH, OUTPUT_PLOTS, OUTPUT_FOLDER, OUTPUT_MAPS]:
     if not os.path.exists(path):
         os.makedirs(path)
+
+print('Data path folder:', PATH,
+      '\nOutput folder:', OUTPUT_FOLDER,
+      '\nOutput maps folder:', OUTPUT_MAPS,
+      '\nOutput plots folder:', OUTPUT_PLOTS)
 
 input('Press enter to proceed.')
 clear_screen()
@@ -354,6 +357,8 @@ print('10. Wind Map')
 year = WILDFIRE_DATE.strftime('%Y')
 month = WILDFIRE_DATE.strftime('%m')
 day = WILDFIRE_DATE.strftime('%d')
+# you can change the values here
+# for example, day = '01', month = '01', year = '2020'
 hours = ['12:00']
 center = (LATITUDE, LONGITUDE)
 
@@ -363,6 +368,7 @@ print('Output file:', output_file)
 ds = wind.open_nc_data(output_file)
 print('\nWind data:\n', ds)
 ds = wind.reshape_data(ds)
+print('\n')
 
 wind_map = wind.create_map(
     ds, center, choice,
@@ -379,3 +385,6 @@ open_map(OUTPUT_MAPS, wind=True)
 print('\nReached the end of the wildfire monitoring program.')
 input('Press enter to continue.')
 clear_screen()
+
+if __name__ == '__main__':
+    pass

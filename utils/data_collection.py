@@ -42,8 +42,8 @@ def get_dataframe_between_dates(api, date1, date2, geojson_path,
 
     Args:
         api (SentinelAPI): API object
-        date1 (datetime): date of the first observation
-        date2 (datetime): date of the second observation
+        date1 (datetime.datetime): date of the first observation
+        date2 (datetime.datetime): date of the second observation
         geojson_path (string): path to the geojson file
         cloud_threshold (float): threshold for cloud coverage. Default is 40
 
@@ -282,7 +282,7 @@ def get_image(api, wildfire_date, observation_interval,
 
     Args:
         api (SentinelAPI): API object
-        wildfire_date (datetime): date of the wildfire
+        wildfire_date (datetime.datetime): date of the wildfire
         observation_interval (int): interval of observation in days
         path (string): path to save the image. Defaults to `'data/'`
         when (string): name of the TIFF file, either `'before'` or `'after'`
@@ -296,6 +296,7 @@ def get_image(api, wildfire_date, observation_interval,
             Default is `'output/'`
             fire_name (string): name of the fire
     """
+    df = None
     if when not in ['before', 'after']:
         raise ValueError(
             f"{when} is not a valid value. It should be 'before' or 'after'."
@@ -372,3 +373,11 @@ def check_downloaded_data(path, output_folder, fire_name):
         print("Data has already been downloaded.")
         return True
     return False
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

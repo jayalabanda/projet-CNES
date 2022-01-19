@@ -188,7 +188,8 @@ def plot_sampled_coordinates(rand_image, prob, figsize, **kwargs):
     """Plot the randomly selected points.
 
     Args:
-        rand_imgage(ndarray): image with the randomly selected points
+        rand_image (ndarray): image with the randomly selected points
+        prob (float): percentage of sampled coordinates
         figsize (tuple): size of the figure
         **kwargs: keyword arguments passed to matplotlib.pyplot.imshow
     """
@@ -389,3 +390,11 @@ def open_gif(fire_name, output_folder):
     """
     file_path = output_folder + fire_name + '.gif'
     webbrowser.open_new_tab('file://' + os.path.realpath(file_path))
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

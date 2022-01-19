@@ -138,3 +138,11 @@ def create_map(ds, center, choice,
     my_map.add_layer_control()
 
     return my_map
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()
