@@ -22,17 +22,19 @@ def get_band(image_folder, band, resolution):
     Returns:
         path to the JP2 image
     """
-    subfolder = [f for f in os.listdir(image_folder + "/GRANULE/")
-                 if f[0] == "L"][0]
-    image_folder_path = image_folder + "/GRANULE/" + subfolder +\
-        "/IMG_DATA/" + f"R{resolution}m"
+    subfolder = [f for f in os.listdir(
+        f'{image_folder}/GRANULE/') if f[0] == "L"][0]
+
+    image_folder_path = f'{image_folder}/GRANULE/{subfolder}/IMG_DATA/' + \
+        f"R{resolution}m"
+
     image_files = [im for im in os.listdir(image_folder_path)
                    if im[-4:] == ".jp2"]
 
     # retrieve path to JP2 image file
     selected_file = [im for im in image_files
                      if im.split("_")[2] == band][0]
-    return image_folder_path + "/" + selected_file
+    return f'{image_folder_path}/{selected_file}'
 
 
 def get_dataframe_between_dates(api, date1, date2, geojson_path,
@@ -179,7 +181,7 @@ def download_from_api(api, uuid, title, path='data/'):
     dirs_safe = [safe for safe in dirs if safe[-4:] == "SAFE"]
 
     # The name of the downloaded file is 'title + .SAFE'
-    img_folder = title + '.SAFE'
+    img_folder = f'{title}.SAFE'
     if img_folder not in dirs_safe:
         print("Attempting to download image from the API.")
         api.download(uuid, path)
@@ -330,7 +332,7 @@ def get_image(api, wildfire_date, observation_interval,
     df = minimize_dataframe(df)
     uuid, title = get_uuid_title(df)
     download_from_api(api, uuid, title, path)
-    image_folder = path + title + ".SAFE"
+    image_folder = f'{path}{title}.SAFE'
 
     create_ndvi_tiff_image(
         path=image_folder,

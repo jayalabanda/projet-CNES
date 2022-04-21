@@ -141,6 +141,37 @@ def plot_location(ax, pixel_column, pixel_row):
     ax.legend(fontsize=13, loc='best')
 
 
+def get_inputs(image):
+    n, m = image.shape
+    h1, h2, v1, v2 = None, None, None, None
+    while True:
+        try:
+            print('Please enter the vertical and horizontal lines',
+                  'to bound the fire area, separated by spaces.'
+                  '\nOrder is: vertical line 1, vertical line 2,'
+                  'horizontal line 1, and horizontal line 2.')
+            print(f'The values must be between 0 and {n}.')
+
+            v1, v2, h1, h2 = map(int, input().split(' '))
+
+            assert 0 <= v1 <= n
+            assert v1 < v2 <= n
+            assert 0 <= h1 <= m
+            assert h1 < h2 <= m
+
+            print('Your inputs:\n',
+                  f'1st vertical line: {v1}\n',
+                  f'2nd vertical line: {v2}\n',
+                  f'1st horizontal line: {h1}\n',
+                  f'2nd horizontal line: {h2}.')
+        except (ValueError, AssertionError):
+            print('Invalid input. Please try again.')
+            continue
+        else:
+            break
+    return h1, h2, v1, v2
+
+
 def plot_fire_area(image, v1, v2, h1, h2,
                    pixel_column, pixel_row,
                    **kwargs):
@@ -170,36 +201,6 @@ def plot_fire_area(image, v1, v2, h1, h2,
     plt.tight_layout()
     plt.show()
 
-
-def get_inputs(image):
-    n, m = image.shape
-    h1, h2, v1, v2 = None, None, None, None
-    while True:
-        try:
-            print('Please enter the vertical and horizontal lines',
-                  'to bound the fire area, separated by spaces.'
-                  '\nOrder is: vertical line 1, vertical line 2 ,'
-                  'horizontal line 1, and horizontal line 2.')
-            print(f'The values must be between 0 and {n}.')
-
-            v1, v2, h1, h2 = map(int, input().split())
-
-            assert 0 <= v1 <= n
-            assert v1 < v2 <= n
-            assert 0 <= h1 <= m
-            assert h1 < h2 <= m
-
-            print('Your inputs:\n',
-                  f'1st vertical line: {v1}\n',
-                  f'2nd vertical line: {v2}\n',
-                  f'1st horizontal line: {h1}\n',
-                  f'2nd horizontal line: {h2}.')
-        except (ValueError, AssertionError):
-            print('Invalid input. Please try again.')
-            continue
-        else:
-            break
-    return h1, h2, v1, v2
 
 
 def retrieve_fire_area(image, pixel_column, pixel_row,
@@ -308,7 +309,7 @@ def calculate_area(image, resolution=10):
         area: area of the image in square kilometers
     """
     count = np.count_nonzero(image)
-    return count * resolution**2 / 1_000_000  # to km^2
+    return count * resolution ** 2 / 1_000_000  # to km^2
 
 
 def get_thresholds_areas(fire, resolution=10):
@@ -489,6 +490,7 @@ def open_fire_image(fire_name, input_folder):
     image_path = f'{input_folder}fire_{fire_name}_{h}_{v}.tiff'
     img = rasterio.open(image_path, driver='GTiff').read(1).astype('float64')
     return img, h, v
+
 
 def main():
     pass

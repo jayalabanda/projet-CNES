@@ -67,8 +67,8 @@ FIRE_NAME = args.fire_name or get_fire_name()
 PATH = f'data/{FIRE_NAME}/'
 # Path to the folders where the TIFF, PNG, HTML, and GIF files will be stored
 OUTPUT_FOLDER = f'output/{FIRE_NAME}/'
-OUTPUT_MAPS = OUTPUT_FOLDER + 'maps/'
-OUTPUT_PLOTS = OUTPUT_FOLDER + 'plots/'
+OUTPUT_MAPS = f'{OUTPUT_FOLDER}maps/'
+OUTPUT_PLOTS = f'{OUTPUT_FOLDER}plots/'
 
 for path in [PATH, OUTPUT_PLOTS, OUTPUT_FOLDER, OUTPUT_MAPS]:
     if not os.path.exists(path):
@@ -385,6 +385,3 @@ open_map(OUTPUT_MAPS, wind=True)
 print('\nReached the end of the wildfire monitoring program.')
 input('Press enter to continue.')
 clear_screen()
-
-if __name__ == '__main__':
-    pass

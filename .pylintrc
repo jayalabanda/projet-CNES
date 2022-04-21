@@ -1,1 +1,2 @@
-disable=no-member
+disable=
+    no-member

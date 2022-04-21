@@ -1,4 +1,5 @@
 import glob
+import itertools
 import os
 import webbrowser
 from collections import Counter
@@ -51,10 +52,9 @@ def create_sample_coordinates(image, seed=None, p=0.01):
     """
     np.random.seed(seed)
     rand_image = np.zeros_like(image)
-    for i in range(image.shape[0]):
-        for j in range(image.shape[1]):
-            if image[i, j] != 0.:
-                rand_image[i, j] = np.random.choice([1, 0], p=[p, 1 - p])
+    for i, j in itertools.product(range(image.shape[0]), range(image.shape[1])):
+        if image[i, j] != 0.:
+            rand_image[i, j] = np.random.choice([1, 0], p=[p, 1 - p])
     return rand_image
 
 
@@ -76,11 +76,8 @@ def get_coordinates_from_pixels(img, h, v, img_folder, fire_name,
     Returns:
         coordinates: dataframe of coordinate tuples (latitude, longitude)
     """
-    coords = []
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            if img[i, j] != 0.:
-                coords.append((v + j, h + i))
+    coords = [(v + j, h + i) for i, j in itertools.product(range(img.shape[0]),
+                                                           range(img.shape[1])) if img[i, j] != 0.0]
 
     tci_file_path = get_tci_file_path(img_folder)
     transform = rasterio.open(tci_file_path, driver='JP2OpenJPEG').transform

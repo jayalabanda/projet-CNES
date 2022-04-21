@@ -28,12 +28,12 @@ for i in random_idxs:
     # build the URL
     url = 'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/'
     url = url + str(lat) + '%2C' + str(lon)
-    url = url + '/' + date1 + '/' + date2
-    url = url + '?key=' + key
+    url = f'{url}/{date1}/{date2}'
+    url = f'{url}?key=' + key
     url += '&elements=windspeed,winddir&include=hours'
 
     # check if the type should be JSON or CSV
-    url += '&contentType=csv' if not as_json else '&contentType=json'
+    url += '&contentType=json' if as_json else '&contentType=csv'
 
     try:
         api_request = requests.get(url)
@@ -41,7 +41,7 @@ for i in random_idxs:
 
         if as_json:
             with open('data/weather_api.json', 'w') as outfile:
-                json.dump(api, outfile, indent=4, sort_keys=True)
+                json.dump(api_request, outfile, indent=4, sort_keys=True)
         else:
             with open(f'temp_data{i}.csv', 'w') as outfile:
                 outfile.write(api_request.text)
